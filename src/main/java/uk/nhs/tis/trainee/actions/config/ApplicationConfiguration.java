@@ -19,18 +19,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.actions;
+package uk.nhs.tis.trainee.actions.config;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.client.RestTemplate;
 
 /**
- * An application for the management of trainee actions.
+ * General application configuration beans which do not warrant their own configuration class.
  */
-@SpringBootApplication
-public class TisTraineeActionsApplication {
+@Configuration
+public class ApplicationConfiguration {
 
-  public static void main(String[] args) {
-    SpringApplication.run(TisTraineeActionsApplication.class);
+  @Bean
+  RestTemplate restTemplate(RestTemplateBuilder builder) {
+    return builder.build();
   }
 }

@@ -1,6 +1,12 @@
 application:
   environment: ${ENVIRONMENT:local}
 
+com:
+  amazonaws:
+    xray:
+      emitters:
+        daemon-address: ${AWS_XRAY_DAEMON_ADDRESS:}
+
 server:
   port: 8212
   servlet:

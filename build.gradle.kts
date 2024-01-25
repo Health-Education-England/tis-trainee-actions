@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "uk.nhs.tis.trainee"
-version = "0.0.1"
+version = "0.0.2"
 
 configurations {
   compileOnly {
@@ -27,6 +27,9 @@ dependencies {
   implementation("org.springframework.boot:spring-boot-starter-actuator")
   implementation("org.springframework.boot:spring-boot-starter-web")
   testImplementation("org.springframework.boot:spring-boot-starter-test")
+
+  // AWS
+  implementation("com.amazonaws:aws-xray-recorder-sdk-spring:2.15.0")
 
   // Lombok
   compileOnly("org.projectlombok:lombok")

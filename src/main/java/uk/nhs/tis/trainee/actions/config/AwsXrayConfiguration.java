@@ -19,18 +19,25 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.actions;
+package uk.nhs.tis.trainee.actions.config;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import com.amazonaws.xray.jakarta.servlet.AWSXRayServletFilter;
+import jakarta.servlet.Filter;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
 /**
- * An application for the management of trainee actions.
+ * Configuration for AWS X-Ray, conditional on daemon configuration being present.
  */
-@SpringBootApplication
-public class TisTraineeActionsApplication {
+@Configuration
+@ConditionalOnExpression("!T(org.springframework.util.StringUtils)"
+    + ".isEmpty('${com.amazonaws.xray.emitters.daemon-address}')")
+public class AwsXrayConfiguration {
 
-  public static void main(String[] args) {
-    SpringApplication.run(TisTraineeActionsApplication.class);
+  @Bean
+  public Filter tracingFilter(@Value("${application.environment}") String environment) {
+    return new AWSXRayServletFilter("tis-trainee-actions-" + environment);
   }
 }

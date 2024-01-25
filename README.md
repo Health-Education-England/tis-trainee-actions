@@ -17,10 +17,11 @@ gradlew bootRun
 
 #### Environmental Variables
 
-| Name                    | Description                                                        | Default   |
-|-------------------------|--------------------------------------------------------------------|-----------|
-| ENVIRONMENT             | The environment to log events against.                             | local     |
-| SENTRY_DSN              | A Sentry error monitoring Data Source Name. (Optional)             |           |
+| Name                    | Description                                            | Default   |
+|-------------------------|--------------------------------------------------------|-----------|
+| AWS_XRAY_DAEMON_ADDRESS | The AWS XRay daemon host. (Optional)                   |           |
+| ENVIRONMENT             | The environment to log events against.                 | local     |
+| SENTRY_DSN              | A Sentry error monitoring Data Source Name. (Optional) |           |
 
 
 ### Testing
