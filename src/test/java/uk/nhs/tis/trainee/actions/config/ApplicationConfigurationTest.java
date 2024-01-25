@@ -19,18 +19,31 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.actions;
+package uk.nhs.tis.trainee.actions.config;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
 
-/**
- * An application for the management of trainee actions.
- */
-@SpringBootApplication
-public class TisTraineeActionsApplication {
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.web.client.RestTemplate;
 
-  public static void main(String[] args) {
-    SpringApplication.run(TisTraineeActionsApplication.class);
+class ApplicationConfigurationTest {
+
+  private ApplicationConfiguration configuration;
+
+  @BeforeEach
+  void setUp() {
+    configuration = new ApplicationConfiguration();
+  }
+
+  @Test
+  void restTemplate() {
+    RestTemplateBuilder restTemplateBuilder = new RestTemplateBuilder();
+
+    RestTemplate restTemplate = configuration.restTemplate(restTemplateBuilder);
+
+    assertThat("Unexpected rest template.", restTemplate, notNullValue());
   }
 }
