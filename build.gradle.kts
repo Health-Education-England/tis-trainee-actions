@@ -22,6 +22,12 @@ repositories {
   mavenCentral()
 }
 
+dependencyManagement {
+  imports {
+    mavenBom("io.awspring.cloud:spring-cloud-aws-dependencies:3.1.0")
+  }
+}
+
 dependencies {
   // Spring Boot starters
   implementation("org.springframework.boot:spring-boot-starter-actuator")
@@ -30,6 +36,7 @@ dependencies {
 
   // AWS
   implementation("com.amazonaws:aws-xray-recorder-sdk-spring:2.15.0")
+  implementation("io.awspring.cloud:spring-cloud-aws-starter-sqs")
 
   // Lombok
   compileOnly("org.projectlombok:lombok")
