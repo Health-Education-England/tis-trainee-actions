@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2022 Crown Copyright (Health Education England)
+ * Copyright 2024 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -19,16 +19,29 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.template;
+package uk.nhs.tis.trainee.actions.config;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.MatcherAssert.assertThat;
 
-@SpringBootApplication
-//TODO: Update package and class name.
-public class TemplateApplication {
+import com.amazonaws.xray.jakarta.servlet.AWSXRayServletFilter;
+import jakarta.servlet.Filter;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-  public static void main(String[] args) {
-    SpringApplication.run(TemplateApplication.class);
+class AwsXrayConfigurationTest {
+
+  private AwsXrayConfiguration configuration;
+
+  @BeforeEach
+  void setUp() {
+    configuration = new AwsXrayConfiguration();
+  }
+
+  @Test
+  void shouldCreateInstanceOfAwsXrayServletFilter() {
+    Filter filter = configuration.tracingFilter("testEnvironment");
+
+    assertThat("Unexpected filter type.", filter, instanceOf(AWSXRayServletFilter.class));
   }
 }

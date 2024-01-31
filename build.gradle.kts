@@ -9,9 +9,8 @@ plugins {
   id("org.sonarqube") version "4.4.1.3373"
 }
 
-// TODO: Update group to end with "admin" or "trainee".
-group = "uk.nhs.tis"
-version = "0.0.1"
+group = "uk.nhs.tis.trainee"
+version = "0.0.2"
 
 configurations {
   compileOnly {
@@ -28,6 +27,9 @@ dependencies {
   implementation("org.springframework.boot:spring-boot-starter-actuator")
   implementation("org.springframework.boot:spring-boot-starter-web")
   testImplementation("org.springframework.boot:spring-boot-starter-test")
+
+  // AWS
+  implementation("com.amazonaws:aws-xray-recorder-sdk-spring:2.15.0")
 
   // Lombok
   compileOnly("org.projectlombok:lombok")
@@ -61,8 +63,7 @@ sonarqube {
     property("sonar.host.url", "https://sonarcloud.io")
     property("sonar.login", System.getenv("SONAR_TOKEN"))
     property("sonar.organization", "health-education-england")
-    // TODO: Update sonar.projectKey to real value.
-    property("sonar.projectKey", "Health-Education-England_tis-microservice-template")
+    property("sonar.projectKey", "Health-Education-England_tis-trainee-actions")
 
     property("sonar.java.checkstyle.reportPaths",
       "build/reports/checkstyle/main.xml,build/reports/checkstyle/test.xml")
