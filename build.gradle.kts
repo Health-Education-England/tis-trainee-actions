@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "uk.nhs.tis.trainee"
-version = "0.1.0"
+version = "0.1.1"
 
 configurations {
   compileOnly {
@@ -53,6 +53,12 @@ dependencies {
   val sentryVersion = "7.2.0"
   implementation("io.sentry:sentry-spring-boot-starter:$sentryVersion")
   implementation("io.sentry:sentry-logback:$sentryVersion")
+
+  testImplementation("org.springframework.boot:spring-boot-testcontainers")
+  testImplementation("org.testcontainers:junit-jupiter")
+  testImplementation("org.testcontainers:localstack")
+  testImplementation("org.testcontainers:mongodb")
+  testImplementation("org.awaitility:awaitility")
 }
 
 java {

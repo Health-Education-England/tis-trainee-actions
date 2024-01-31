@@ -17,11 +17,18 @@ gradlew bootRun
 
 #### Environmental Variables
 
-| Name                    | Description                                            | Default   |
-|-------------------------|--------------------------------------------------------|-----------|
-| AWS_XRAY_DAEMON_ADDRESS | The AWS XRay daemon host. (Optional)                   |           |
-| ENVIRONMENT             | The environment to log events against.                 | local     |
-| SENTRY_DSN              | A Sentry error monitoring Data Source Name. (Optional) |           |
+| Name                              | Description                                             | Default   |
+|-----------------------------------|---------------------------------------------------------|-----------|
+| AWS_ENDPOINT                      | The AWS endpoint to use, used for local dev. (Optional) |           |
+| AWS_XRAY_DAEMON_ADDRESS           | The AWS XRay daemon host. (Optional)                    |           |
+| ENVIRONMENT                       | The environment to log events against.                  | local     |
+| MONGO_DB                          | The name of the MongoDB database.                       | actions   |
+| MONGO_HOST                        | The MongoDB database server host.                       | localhost |
+| MONGO_PASSWORD                    | The login password for the MongoDB database.            | pwd       |
+| MONGO_PORT                        | The MongoDB database server port.                       | 27017     |
+| MONGO_USER                        | The login username for the MongoDB database.            | admin     |
+| PROGRAMME_MEMBERSHIP_SYNCED_QUEUE | The queue URL for Programme Membership sync events.     |           |
+| SENTRY_DSN                        | A Sentry error monitoring Data Source Name. (Optional)  |           |
 
 
 ### Testing

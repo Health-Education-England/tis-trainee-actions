@@ -24,6 +24,7 @@ package uk.nhs.tis.trainee.actions.event;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import lombok.Getter;
 
 /**
@@ -32,7 +33,9 @@ import lombok.Getter;
 @Getter
 public abstract class RecordEvent {
 
-  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().findAndRegisterModules();
+  private static final ObjectMapper OBJECT_MAPPER = JsonMapper.builder()
+      .findAndAddModules()
+      .build();
 
   private Operation operation;
 

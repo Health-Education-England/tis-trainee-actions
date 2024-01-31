@@ -30,6 +30,7 @@ import static org.mockito.Mockito.verify;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.time.LocalDate;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,7 +56,9 @@ class ProgrammeMembershipListenerTest {
   void setUp() {
     service = mock(ActionService.class);
     listener = new ProgrammeMembershipListener(service);
-    mapper = new ObjectMapper().findAndRegisterModules();
+    mapper = JsonMapper.builder()
+        .findAndAddModules()
+        .build();
   }
 
   @Test
