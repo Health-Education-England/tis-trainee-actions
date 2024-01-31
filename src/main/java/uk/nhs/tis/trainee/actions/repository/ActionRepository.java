@@ -19,47 +19,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.actions.event;
+package uk.nhs.tis.trainee.actions.repository;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.Getter;
+import org.bson.types.ObjectId;
+import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.stereotype.Repository;
+import uk.nhs.tis.trainee.actions.model.Action;
 
 /**
- * An abstract representation of a record event.
+ * A repository of trainee actions.
  */
-@Getter
-public abstract class RecordEvent {
+@Repository
+public interface ActionRepository extends MongoRepository<Action, ObjectId> {
 
-  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().findAndRegisterModules();
-
-  private Operation operation;
-
-  /**
-   * Unpack the record node of the event JSON.
-   *
-   * @param recordNode The node to unpack.
-   */
-  @JsonProperty("record")
-  private void unpackRecord(JsonNode recordNode) {
-    operation = getObjectMapper().convertValue(recordNode.get("operation"), Operation.class);
-    unpackData(recordNode.get("data"));
-  }
-
-  /**
-   * Unpack the data node of the event JSON.
-   *
-   * @param dataNode The data node to unpack.
-   */
-  protected abstract void unpackData(JsonNode dataNode);
-
-  /**
-   * Get a configured object mapper to use for object conversion.
-   *
-   * @return The configured object mapper.
-   */
-  protected ObjectMapper getObjectMapper() {
-    return OBJECT_MAPPER;
-  }
 }

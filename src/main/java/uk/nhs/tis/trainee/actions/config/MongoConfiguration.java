@@ -19,47 +19,43 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.actions.event;
+package uk.nhs.tis.trainee.actions.config;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.Getter;
+import jakarta.annotation.PostConstruct;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.domain.Sort.Direction;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.index.Index;
+import org.springframework.data.mongodb.core.index.IndexOperations;
+import uk.nhs.tis.trainee.actions.model.Action;
 
 /**
- * An abstract representation of a record event.
+ * Additional configuration for MongoDB.
  */
-@Getter
-public abstract class RecordEvent {
+@Configuration
+public class MongoConfiguration {
 
-  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().findAndRegisterModules();
+  private final MongoTemplate template;
 
-  private Operation operation;
-
-  /**
-   * Unpack the record node of the event JSON.
-   *
-   * @param recordNode The node to unpack.
-   */
-  @JsonProperty("record")
-  private void unpackRecord(JsonNode recordNode) {
-    operation = getObjectMapper().convertValue(recordNode.get("operation"), Operation.class);
-    unpackData(recordNode.get("data"));
+  MongoConfiguration(MongoTemplate template) {
+    this.template = template;
   }
 
   /**
-   * Unpack the data node of the event JSON.
-   *
-   * @param dataNode The data node to unpack.
+   * Add custom indexes to the Mongo collections.
    */
-  protected abstract void unpackData(JsonNode dataNode);
-
-  /**
-   * Get a configured object mapper to use for object conversion.
-   *
-   * @return The configured object mapper.
-   */
-  protected ObjectMapper getObjectMapper() {
-    return OBJECT_MAPPER;
+  @PostConstruct
+  public void initIndexes() {
+    IndexOperations indexOps = template.indexOps(Action.class);
+    indexOps.ensureIndex(new Index()
+        .named("traineeIndex")
+        .on("traineeId", Direction.ASC)
+    );
+    indexOps.ensureIndex(new Index()
+        .named("uniqueActionPerReference")
+        .on("type", Direction.ASC)
+        .on("tisReference", Direction.ASC)
+        .unique()
+    );
   }
 }

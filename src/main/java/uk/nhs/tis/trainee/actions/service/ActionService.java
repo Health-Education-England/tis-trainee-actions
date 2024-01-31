@@ -21,18 +21,56 @@
 
 package uk.nhs.tis.trainee.actions.service;
 
+import static uk.nhs.tis.trainee.actions.model.ActionType.REVIEW_DATA;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import uk.nhs.tis.trainee.actions.dto.ProgrammeMembershipDto;
 import uk.nhs.tis.trainee.actions.event.Operation;
+import uk.nhs.tis.trainee.actions.mapper.ActionMapper;
 import uk.nhs.tis.trainee.actions.model.Action;
+import uk.nhs.tis.trainee.actions.repository.ActionRepository;
 
+/**
+ * A service provided Action functionality.
+ */
 @Slf4j
 @Service
 public class ActionService {
 
-  public Action updateActions(Operation operation, ProgrammeMembershipDto programmeMembership) {
-    log.info("Action service called for '{}' operation.");
-    return null;
+  private final ActionRepository repository;
+  private final ActionMapper mapper;
+
+  public ActionService(ActionRepository repository, ActionMapper mapper) {
+    this.repository = repository;
+    this.mapper = mapper;
+  }
+
+  /**
+   * Updates the actions associated with the given Operation and Programme Membership data.
+   *
+   * @param operation The operation that triggered the update.
+   * @param dto       The Programme Membership data associated with the operation.
+   * @return A list of updated actions, empty if no actions required.
+   */
+  public List<Action> updateActions(Operation operation,
+      ProgrammeMembershipDto dto) {
+    List<Action> actions = new ArrayList<>();
+
+    if (Objects.equals(operation, Operation.CREATE)) {
+      Action action = mapper.toAction(dto, REVIEW_DATA);
+      actions.add(action);
+    }
+
+    if (actions.isEmpty()) {
+      log.info("No new actions required for Programme Membership {}", dto.id());
+      return List.of();
+    }
+
+    log.info("Adding {} new action(s) for Programme Membership {}.", actions.size(), dto.id());
+    return repository.insert(actions);
   }
 }

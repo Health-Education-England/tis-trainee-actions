@@ -23,9 +23,16 @@ package uk.nhs.tis.trainee.actions;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.ActiveProfiles;
+import uk.nhs.tis.trainee.actions.config.MongoConfiguration;
 
 @SpringBootTest
+@ActiveProfiles("test")
 class TisTraineeActionsApplicationTest {
+
+  @MockBean
+  private MongoConfiguration mongoConfiguration;
 
   @Test
   void contextLoads() {

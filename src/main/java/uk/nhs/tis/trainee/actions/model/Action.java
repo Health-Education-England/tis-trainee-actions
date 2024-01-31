@@ -19,47 +19,41 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.actions.event;
+package uk.nhs.tis.trainee.actions.model;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.Getter;
+import java.time.Instant;
+import java.time.LocalDate;
+import org.bson.types.ObjectId;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 /**
- * An abstract representation of a record event.
+ * A representation of a pending or completed trainee action.
+ *
+ * @param id               The ID of the action.
+ * @param type             The type of action.
+ * @param traineeId        The ID of the trainee who the action is for.
+ * @param tisReferenceInfo The TIS core object associated with the action.
+ * @param due              When the action is due.
+ * @param completed        When the action was completed, null if not completed.
  */
-@Getter
-public abstract class RecordEvent {
-
-  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().findAndRegisterModules();
-
-  private Operation operation;
-
-  /**
-   * Unpack the record node of the event JSON.
-   *
-   * @param recordNode The node to unpack.
-   */
-  @JsonProperty("record")
-  private void unpackRecord(JsonNode recordNode) {
-    operation = getObjectMapper().convertValue(recordNode.get("operation"), Operation.class);
-    unpackData(recordNode.get("data"));
-  }
+@Document(collection = "Action")
+public record Action(
+    @Id
+    ObjectId id,
+    ActionType type,
+    String traineeId,
+    TisReferenceInfo tisReferenceInfo,
+    LocalDate due,
+    Instant completed) {
 
   /**
-   * Unpack the data node of the event JSON.
+   * A representation of the TIS record that prompted the action.
    *
-   * @param dataNode The data node to unpack.
+   * @param id   The TIS ID of the entity that prompted the action.
+   * @param type The TIS reference type for the entity that prompted the action.
    */
-  protected abstract void unpackData(JsonNode dataNode);
+  public record TisReferenceInfo(String id, TisReferenceType type) {
 
-  /**
-   * Get a configured object mapper to use for object conversion.
-   *
-   * @return The configured object mapper.
-   */
-  protected ObjectMapper getObjectMapper() {
-    return OBJECT_MAPPER;
   }
 }
