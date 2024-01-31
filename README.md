@@ -33,14 +33,20 @@ gradlew bootRun
 
 ### Testing
 
-The Gradle `test` task can be used to run automated tests and produce coverage
+The Gradle `test` task can be used to run unit tests and produce coverage
 reports.
 ```shell
 gradlew test
 ```
 
-The Gradle `check` lifecycle task can be used to run automated tests and also
-verify formatting conforms to the code style guidelines.
+The Gradle `integrationTest` task can be used to run integration tests, Docker
+is a prerequisite for many integration tests.
+```shell
+gradlew integrationTest
+```
+
+The Gradle `check` lifecycle task can be used to run unit tests and also verify
+formatting conforms to the code style guidelines.
 ```shell
 gradlew check
 ```
