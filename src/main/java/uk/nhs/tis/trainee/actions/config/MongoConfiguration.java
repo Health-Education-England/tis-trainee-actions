@@ -19,23 +19,43 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.actions;
+package uk.nhs.tis.trainee.actions.config;
 
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.test.context.ActiveProfiles;
-import uk.nhs.tis.trainee.actions.config.MongoConfiguration;
+import jakarta.annotation.PostConstruct;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.domain.Sort.Direction;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.index.Index;
+import org.springframework.data.mongodb.core.index.IndexOperations;
+import uk.nhs.tis.trainee.actions.model.Action;
 
-@SpringBootTest
-@ActiveProfiles("test")
-class TisTraineeActionsApplicationTest {
+/**
+ * Additional configuration for MongoDB.
+ */
+@Configuration
+public class MongoConfiguration {
 
-  @MockBean
-  private MongoConfiguration mongoConfiguration;
+  private final MongoTemplate template;
 
-  @Test
-  void contextLoads() {
+  MongoConfiguration(MongoTemplate template) {
+    this.template = template;
+  }
 
+  /**
+   * Add custom indexes to the Mongo collections.
+   */
+  @PostConstruct
+  public void initIndexes() {
+    IndexOperations indexOps = template.indexOps(Action.class);
+    indexOps.ensureIndex(new Index()
+        .named("traineeIndex")
+        .on("traineeId", Direction.ASC)
+    );
+    indexOps.ensureIndex(new Index()
+        .named("uniqueActionPerReference")
+        .on("type", Direction.ASC)
+        .on("tisReference", Direction.ASC)
+        .unique()
+    );
   }
 }

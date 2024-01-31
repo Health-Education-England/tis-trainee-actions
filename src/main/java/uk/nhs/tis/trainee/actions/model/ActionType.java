@@ -19,23 +19,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.actions;
+package uk.nhs.tis.trainee.actions.model;
 
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.test.context.ActiveProfiles;
-import uk.nhs.tis.trainee.actions.config.MongoConfiguration;
-
-@SpringBootTest
-@ActiveProfiles("test")
-class TisTraineeActionsApplicationTest {
-
-  @MockBean
-  private MongoConfiguration mongoConfiguration;
-
-  @Test
-  void contextLoads() {
-
-  }
+/**
+ * The type category of the action to be performed.
+ */
+public enum ActionType {
+  REVIEW_DATA
 }

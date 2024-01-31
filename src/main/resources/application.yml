@@ -1,5 +1,7 @@
 application:
   environment: ${ENVIRONMENT:local}
+  queues:
+    programme-membership-synced: ${PROGRAMME_MEMBERSHIP_SYNCED_QUEUE}
 
 com:
   amazonaws:
@@ -15,3 +17,11 @@ server:
 sentry:
   dsn: ${SENTRY_DSN:}
   environment: ${application.environment}
+
+spring:
+  cloud:
+    aws:
+      endpoint: ${AWS_ENDPOINT:}
+  data:
+    mongodb:
+      uri: mongodb://${MONGO_USER:admin}:${MONGO_PASSWORD:pwd}@${MONGO_HOST:localhost}:${MONGO_PORT:27017}/${MONGO_DB:actions}?authSource=admin

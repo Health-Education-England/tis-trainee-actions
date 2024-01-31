@@ -19,23 +19,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.actions;
+package uk.nhs.tis.trainee.actions.event;
 
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.test.context.ActiveProfiles;
-import uk.nhs.tis.trainee.actions.config.MongoConfiguration;
+import com.fasterxml.jackson.databind.JsonNode;
+import lombok.Getter;
+import uk.nhs.tis.trainee.actions.dto.ProgrammeMembershipDto;
 
-@SpringBootTest
-@ActiveProfiles("test")
-class TisTraineeActionsApplicationTest {
+/**
+ * A programme membership event.
+ */
+@Getter
+public class ProgrammeMembershipEvent extends RecordEvent {
 
-  @MockBean
-  private MongoConfiguration mongoConfiguration;
+  private ProgrammeMembershipDto programmeMembership;
 
-  @Test
-  void contextLoads() {
-
+  @Override
+  protected void unpackData(JsonNode data) {
+    programmeMembership = getObjectMapper().convertValue(data, ProgrammeMembershipDto.class);
   }
 }

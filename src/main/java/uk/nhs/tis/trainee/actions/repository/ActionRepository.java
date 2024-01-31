@@ -19,23 +19,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.actions;
+package uk.nhs.tis.trainee.actions.repository;
 
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.test.context.ActiveProfiles;
-import uk.nhs.tis.trainee.actions.config.MongoConfiguration;
+import org.bson.types.ObjectId;
+import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.stereotype.Repository;
+import uk.nhs.tis.trainee.actions.model.Action;
 
-@SpringBootTest
-@ActiveProfiles("test")
-class TisTraineeActionsApplicationTest {
+/**
+ * A repository of trainee actions.
+ */
+@Repository
+public interface ActionRepository extends MongoRepository<Action, ObjectId> {
 
-  @MockBean
-  private MongoConfiguration mongoConfiguration;
-
-  @Test
-  void contextLoads() {
-
-  }
 }

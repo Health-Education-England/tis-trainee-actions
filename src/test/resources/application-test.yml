@@ -1,0 +1,7 @@
+spring:
+  cloud:
+    aws:
+      region:
+        static: aws-global
+      sqs:
+        enabled: false

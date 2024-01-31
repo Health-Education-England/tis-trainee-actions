@@ -19,23 +19,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.actions;
+package uk.nhs.tis.trainee.actions.dto;
 
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.test.context.ActiveProfiles;
-import uk.nhs.tis.trainee.actions.config.MongoConfiguration;
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import java.time.LocalDate;
 
-@SpringBootTest
-@ActiveProfiles("test")
-class TisTraineeActionsApplicationTest {
+/**
+ * A representation of a programme membership.
+ *
+ * @param id        The programme membership ID.
+ * @param traineeId The trainee ID associated with the membership.
+ * @param startDate The programme start date.
+ */
+@JsonIgnoreProperties(ignoreUnknown = true)
+public record ProgrammeMembershipDto(@JsonAlias("tisId") String id,
+                                     @JsonAlias("personId") String traineeId, LocalDate startDate) {
 
-  @MockBean
-  private MongoConfiguration mongoConfiguration;
-
-  @Test
-  void contextLoads() {
-
-  }
 }
