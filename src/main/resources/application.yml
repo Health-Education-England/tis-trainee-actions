@@ -1,6 +1,7 @@
 application:
   environment: ${ENVIRONMENT:local}
   queues:
+    placement-synced: ${PLACEMENT_SYNCED_QUEUE}
     programme-membership-synced: ${PROGRAMME_MEMBERSHIP_SYNCED_QUEUE}
 
 com:

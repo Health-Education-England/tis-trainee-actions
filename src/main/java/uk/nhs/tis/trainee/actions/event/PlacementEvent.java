@@ -19,12 +19,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.actions.model;
+package uk.nhs.tis.trainee.actions.event;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import lombok.Getter;
+import uk.nhs.tis.trainee.actions.dto.PlacementDto;
 
 /**
- * An enumeration of possible TIS reference (core entity) types.
+ * A placement event.
  */
-public enum TisReferenceType {
-  PLACEMENT,
-  PROGRAMME_MEMBERSHIP
+@Getter
+public class PlacementEvent extends RecordEvent {
+
+  private PlacementDto placement;
+
+  @Override
+  protected void unpackData(JsonNode data) {
+    placement = getObjectMapper().convertValue(data, PlacementDto.class);
+  }
 }

@@ -19,12 +19,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.actions.model;
+package uk.nhs.tis.trainee.actions.dto;
+
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import java.time.LocalDate;
 
 /**
- * An enumeration of possible TIS reference (core entity) types.
+ * A representation of a placement.
+ *
+ * @param id        The placement ID.
+ * @param traineeId The trainee ID associated with the placement.
+ * @param startDate The placement start date.
  */
-public enum TisReferenceType {
-  PLACEMENT,
-  PROGRAMME_MEMBERSHIP
+@JsonIgnoreProperties(ignoreUnknown = true)
+public record PlacementDto(@JsonAlias("tisId") String id, String traineeId,
+                           @JsonAlias("dateFrom") LocalDate startDate) {
+
 }

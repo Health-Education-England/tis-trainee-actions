@@ -19,12 +19,42 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.actions.model;
+package uk.nhs.tis.trainee.actions.event;
+
+import io.awspring.cloud.sqs.annotation.SqsListener;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+import uk.nhs.tis.trainee.actions.dto.PlacementDto;
+import uk.nhs.tis.trainee.actions.service.ActionService;
 
 /**
- * An enumeration of possible TIS reference (core entity) types.
+ * A listener for programme membership events.
  */
-public enum TisReferenceType {
-  PLACEMENT,
-  PROGRAMME_MEMBERSHIP
+@Slf4j
+@Component
+public class PlacementListener {
+
+  private final ActionService actionService;
+
+  public PlacementListener(ActionService actionService) {
+    this.actionService = actionService;
+  }
+
+  /**
+   * Handle a placement sync event.
+   *
+   * @param event The event to handle.
+   */
+  @SqsListener("${application.queues.placement-synced}")
+  public void handlePlacementSync(PlacementEvent event) {
+    log.debug("Placement sync event received: {}", event);
+    Operation operation = event.getOperation();
+    PlacementDto dto = event.getPlacement();
+
+    if (operation != null && dto != null) {
+      actionService.updateActions(operation, event.getPlacement());
+    } else {
+      throw new IllegalArgumentException("Skipping event handling due to incomplete event data.");
+    }
+  }
 }

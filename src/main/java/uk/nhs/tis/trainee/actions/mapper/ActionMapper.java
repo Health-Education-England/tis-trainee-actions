@@ -21,11 +21,14 @@
 
 package uk.nhs.tis.trainee.actions.mapper;
 
+import java.time.LocalDate;
 import static org.mapstruct.MappingConstants.ComponentModel.SPRING;
 
 import java.util.List;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.MappingConstants.ComponentModel;
+import uk.nhs.tis.trainee.actions.dto.PlacementDto;
 import uk.nhs.tis.trainee.actions.dto.ActionDto;
 import uk.nhs.tis.trainee.actions.dto.ProgrammeMembershipDto;
 import uk.nhs.tis.trainee.actions.model.Action;
@@ -88,4 +91,29 @@ public interface ActionMapper {
   @Mapping(target = "id", source = "dto.id")
   @Mapping(target = "type", constant = "PROGRAMME_MEMBERSHIP")
   TisReferenceInfo map(ProgrammeMembershipDto dto);
+
+  /**
+   * Create an action using Placement data.
+   *
+   * @param dto  The Placement to retrieve data from.
+   * @param type The type of action to be created.
+   * @return The created action.
+   */
+  @Mapping(target = "id", ignore = true)
+  @Mapping(target = "type", source = "type")
+  @Mapping(target = "traineeId", source = "dto.traineeId")
+  @Mapping(target = "tisReferenceInfo", source = "dto")
+  @Mapping(target = "due", expression = "java( dto.startDate() != null ? dto.startDate().minusWeeks(12) : null )")
+  @Mapping(target = "completed", ignore = true)
+  Action toAction(PlacementDto dto, ActionType type);
+
+  /**
+   * Map a Placement to a TIS reference info object.
+   *
+   * @param dto The Placement to map.
+   * @return A reference to the TIS core object.
+   */
+  @Mapping(target = "id", source = "dto.id")
+  @Mapping(target = "type", constant = "PLACEMENT")
+  TisReferenceInfo map(PlacementDto dto);
 }
