@@ -21,6 +21,7 @@
 
 package uk.nhs.tis.trainee.actions.repository;
 
+import java.util.List;
 import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
@@ -32,4 +33,11 @@ import uk.nhs.tis.trainee.actions.model.Action;
 @Repository
 public interface ActionRepository extends MongoRepository<Action, ObjectId> {
 
+  /**
+   * Get all incomplete actions associated with a given trainee ID.
+   *
+   * @param traineeId The ID of the trainee to get actions for.
+   * @return A list of incomplete actions for the trainee.
+   */
+  List<Action> findAllByTraineeIdAndCompletedIsNullOrderByDueAsc(String traineeId);
 }

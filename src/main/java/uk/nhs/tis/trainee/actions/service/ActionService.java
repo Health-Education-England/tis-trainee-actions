@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import uk.nhs.tis.trainee.actions.dto.ActionDto;
 import uk.nhs.tis.trainee.actions.dto.ProgrammeMembershipDto;
 import uk.nhs.tis.trainee.actions.event.Operation;
 import uk.nhs.tis.trainee.actions.mapper.ActionMapper;
@@ -56,8 +57,7 @@ public class ActionService {
    * @param dto       The Programme Membership data associated with the operation.
    * @return A list of updated actions, empty if no actions required.
    */
-  public List<Action> updateActions(Operation operation,
-      ProgrammeMembershipDto dto) {
+  public List<ActionDto> updateActions(Operation operation, ProgrammeMembershipDto dto) {
     List<Action> actions = new ArrayList<>();
 
     if (Objects.equals(operation, Operation.CREATE)) {
@@ -71,6 +71,17 @@ public class ActionService {
     }
 
     log.info("Adding {} new action(s) for Programme Membership {}.", actions.size(), dto.id());
-    return repository.insert(actions);
+    return mapper.toDtos(repository.insert(actions));
+  }
+
+  /**
+   * Find all incomplete actions associated with a given trainee ID.
+   *
+   * @param traineeId The ID of the trainee to get actions for.
+   * @return The found actions, empty if no actions found.
+   */
+  public List<ActionDto> findIncompleteTraineeActions(String traineeId) {
+    List<Action> actions = repository.findAllByTraineeIdAndCompletedIsNullOrderByDueAsc(traineeId);
+    return mapper.toDtos(actions);
   }
 }

@@ -19,43 +19,39 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.actions.config;
+package uk.nhs.tis.trainee.actions.api.util;
 
-import jakarta.annotation.PostConstruct;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.data.domain.Sort.Direction;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.index.Index;
-import org.springframework.data.mongodb.core.index.IndexOperations;
-import uk.nhs.tis.trainee.actions.model.Action;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.Map;
 
 /**
- * Additional configuration for MongoDB.
+ * A utility for authentication tokens.
  */
-@Configuration
-public class MongoConfiguration {
+public class AuthTokenUtil {
 
-  private final MongoTemplate template;
+  private static final String TIS_ID_ATTRIBUTE = "custom:tisId";
 
-  MongoConfiguration(MongoTemplate template) {
-    this.template = template;
+  private static final ObjectMapper mapper = new ObjectMapper();
+
+  private AuthTokenUtil() {
   }
 
   /**
-   * Add custom indexes to the Mongo collections.
+   * Get the trainee's TIS ID from the provided token.
+   *
+   * @param token The token to use.
+   * @return The trainee's TIS ID.
+   * @throws IOException If the token's payload was not a Map.
    */
-  @PostConstruct
-  public void initIndexes() {
-    IndexOperations indexOps = template.indexOps(Action.class);
-    indexOps.ensureIndex(new Index()
-        .named("traineeIndex")
-        .on("traineeId", Direction.ASC)
-    );
-    indexOps.ensureIndex(new Index()
-        .named("uniqueActionPerReference")
-        .on("type", Direction.ASC)
-        .on("tisReferenceInfo", Direction.ASC)
-        .unique()
-    );
+  public static String getTraineeTisId(String token) throws IOException {
+    String[] tokenSections = token.split("\\.");
+    byte[] payloadBytes = Base64.getUrlDecoder()
+        .decode(tokenSections[1].getBytes(StandardCharsets.UTF_8));
+
+    Map<?, ?> payload = mapper.readValue(payloadBytes, Map.class);
+    return (String) payload.get(TIS_ID_ATTRIBUTE);
   }
 }

@@ -21,9 +21,11 @@
 
 package uk.nhs.tis.trainee.actions.mapper;
 
+import java.util.List;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants.ComponentModel;
+import uk.nhs.tis.trainee.actions.dto.ActionDto;
 import uk.nhs.tis.trainee.actions.dto.ProgrammeMembershipDto;
 import uk.nhs.tis.trainee.actions.model.Action;
 import uk.nhs.tis.trainee.actions.model.Action.TisReferenceInfo;
@@ -36,6 +38,28 @@ import uk.nhs.tis.trainee.actions.model.ActionType;
 public interface ActionMapper {
 
   /**
+   * Convert an Action entity to an Action DTO.
+   *
+   * @param entity The entity to convert.
+   * @return The built DTO.
+   */
+  @Mapping(target = "id", expression = "java(entity.id() == null ? null : entity.id().toString())")
+  @Mapping(target = "type")
+  @Mapping(target = "traineeId")
+  @Mapping(target = "tisReferenceInfo")
+  @Mapping(target = "due")
+  @Mapping(target = "completed")
+  ActionDto toDto(Action entity);
+
+  /**
+   * Convert a list of Actions to a List of Action DTOs.
+   *
+   * @param entities The entities to convert.
+   * @return The built DTOs.
+   */
+  List<ActionDto> toDtos(List<Action> entities);
+
+  /**
    * Create an action using Programme Membership data.
    *
    * @param dto  The Programme Membership to retrieve data from.
@@ -43,7 +67,7 @@ public interface ActionMapper {
    * @return The created action.
    */
   @Mapping(target = "id", ignore = true)
-  @Mapping(target = "type", source = "type")
+  @Mapping(target = "type")
   @Mapping(target = "traineeId", source = "dto.traineeId")
   @Mapping(target = "tisReferenceInfo", source = "dto")
   @Mapping(target = "due", source = "dto.startDate")
