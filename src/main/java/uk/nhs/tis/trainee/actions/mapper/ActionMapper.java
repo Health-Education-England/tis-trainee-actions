@@ -21,10 +21,11 @@
 
 package uk.nhs.tis.trainee.actions.mapper;
 
+import static org.mapstruct.MappingConstants.ComponentModel.SPRING;
+
 import java.util.List;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import org.mapstruct.MappingConstants.ComponentModel;
 import uk.nhs.tis.trainee.actions.dto.ActionDto;
 import uk.nhs.tis.trainee.actions.dto.ProgrammeMembershipDto;
 import uk.nhs.tis.trainee.actions.model.Action;
@@ -34,7 +35,7 @@ import uk.nhs.tis.trainee.actions.model.ActionType;
 /**
  * A mapper to convert to and between Action data types.
  */
-@Mapper(componentModel = ComponentModel.SPRING)
+@Mapper(componentModel = SPRING)
 public interface ActionMapper {
 
   /**
@@ -44,11 +45,6 @@ public interface ActionMapper {
    * @return The built DTO.
    */
   @Mapping(target = "id", expression = "java(entity.id() == null ? null : entity.id().toString())")
-  @Mapping(target = "type")
-  @Mapping(target = "traineeId")
-  @Mapping(target = "tisReferenceInfo")
-  @Mapping(target = "due")
-  @Mapping(target = "completed")
   ActionDto toDto(Action entity);
 
   /**
@@ -58,6 +54,15 @@ public interface ActionMapper {
    * @return The built DTOs.
    */
   List<ActionDto> toDtos(List<Action> entities);
+
+  /**
+   * Complete the given action, with the timestamp set to the current time.
+   *
+   * @param action The action to complete.
+   * @return The completed action.
+   */
+  @Mapping(target = "completed", expression = "java(java.time.Instant.now())")
+  Action complete(Action action);
 
   /**
    * Create an action using Programme Membership data.

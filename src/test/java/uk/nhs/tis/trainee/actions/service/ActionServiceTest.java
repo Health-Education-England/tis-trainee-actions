@@ -21,25 +21,32 @@
 
 package uk.nhs.tis.trainee.actions.service;
 
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyIterable;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.actions.model.ActionType.REVIEW_DATA;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.mockito.ArgumentCaptor;
 import uk.nhs.tis.trainee.actions.dto.ActionDto;
 import uk.nhs.tis.trainee.actions.dto.ProgrammeMembershipDto;
 import uk.nhs.tis.trainee.actions.event.Operation;
@@ -52,6 +59,7 @@ class ActionServiceTest {
 
   private static final String TIS_ID = UUID.randomUUID().toString();
   private static final String TRAINEE_ID = UUID.randomUUID().toString();
+  private static final ObjectId ACTION_ID = ObjectId.get();
   private static final LocalDate TOMORROW = LocalDate.now().plusDays(1);
 
   private ActionService service;
@@ -134,8 +142,87 @@ class ActionServiceTest {
       assertThat("Unexpected completed date.", actDto.completed(), nullValue());
 
       TisReferenceInfo refInfo = actDto.tisReferenceInfo();
-      assertThat("Unexpected TIS id.", tisReference.id(), is(TIS_ID));
-      assertThat("Unexpected TIS type.", tisReference.type(), is(PROGRAMME_MEMBERSHIP));
+      assertThat("Unexpected TIS id.", refInfo.id(), is(TIS_ID));
+      assertThat("Unexpected TIS type.", refInfo.type(), is(PROGRAMME_MEMBERSHIP));
     });
+  }
+
+  @Test
+  void shouldNotCompleteActionWhenActionIdInvalid() {
+    Optional<ActionDto> optionalAction = service.complete(TRAINEE_ID, "40");
+
+    assertThat("Unexpected action presence.", optionalAction.isPresent(), is(false));
+    verifyNoInteractions(repository);
+  }
+
+  @Test
+  void shouldNotCompleteActionWhenActionNotFound() {
+    when(repository.findByIdAndTraineeId(ACTION_ID, TRAINEE_ID)).thenReturn(Optional.empty());
+
+    Optional<ActionDto> optionalAction = service.complete(TRAINEE_ID, ACTION_ID.toString());
+
+    assertThat("Unexpected action presence.", optionalAction.isPresent(), is(false));
+    verify(repository, never()).save(any());
+  }
+
+  @Test
+  void shouldNotCompleteActionWhenActionAlreadyCompleted() {
+    TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
+    Action action = new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, tisReference, TOMORROW,
+        Instant.now());
+    when(repository.findByIdAndTraineeId(ACTION_ID, TRAINEE_ID)).thenReturn(Optional.of(action));
+
+    Optional<ActionDto> optionalAction = service.complete(TRAINEE_ID, ACTION_ID.toString());
+
+    assertThat("Unexpected action presence.", optionalAction.isPresent(), is(false));
+    verify(repository, never()).save(any());
+  }
+
+  @Test
+  void shouldSaveCompletedActionWhenActionCompletableAndTraineeMatches() {
+    TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
+    Action action = new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, tisReference, TOMORROW, null);
+    when(repository.findByIdAndTraineeId(ACTION_ID, TRAINEE_ID)).thenReturn(Optional.of(action));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    service.complete(TRAINEE_ID, ACTION_ID.toString());
+
+    ArgumentCaptor<Action> actionCaptor = ArgumentCaptor.forClass(Action.class);
+    verify(repository).save(actionCaptor.capture());
+
+    Action completedAction = actionCaptor.getValue();
+    assertThat("Unexpected action id.", completedAction.id(), is(ACTION_ID));
+    assertThat("Unexpected action type.", completedAction.type(), is(REVIEW_DATA));
+    assertThat("Unexpected trainee id.", completedAction.traineeId(), is(TRAINEE_ID));
+    assertThat("Unexpected due date.", completedAction.due(), is(TOMORROW));
+    assertThat("Unexpected completed date.", completedAction.completed(),
+        instanceOf(Instant.class));
+
+    TisReferenceInfo refInfo = completedAction.tisReferenceInfo();
+    assertThat("Unexpected TIS id.", refInfo.id(), is(TIS_ID));
+    assertThat("Unexpected TIS type.", refInfo.type(), is(PROGRAMME_MEMBERSHIP));
+  }
+
+  @Test
+  void shouldReturnCompletedActionWhenActionCompletableAndTraineeMatches() {
+    TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
+    Action action = new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, tisReference, TOMORROW, null);
+    when(repository.findByIdAndTraineeId(ACTION_ID, TRAINEE_ID)).thenReturn(Optional.of(action));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<ActionDto> optionalAction = service.complete(TRAINEE_ID, ACTION_ID.toString());
+
+    assertThat("Unexpected action presence.", optionalAction.isPresent(), is(true));
+
+    ActionDto actionDto = optionalAction.get();
+    assertThat("Unexpected action id.", actionDto.id(), is(ACTION_ID.toString()));
+    assertThat("Unexpected action type.", actionDto.type(), is(REVIEW_DATA.toString()));
+    assertThat("Unexpected trainee id.", actionDto.traineeId(), is(TRAINEE_ID));
+    assertThat("Unexpected due date.", actionDto.due(), is(TOMORROW));
+    assertThat("Unexpected completed date.", actionDto.completed(), instanceOf(Instant.class));
+
+    TisReferenceInfo refInfo = actionDto.tisReferenceInfo();
+    assertThat("Unexpected TIS id.", refInfo.id(), is(TIS_ID));
+    assertThat("Unexpected TIS type.", refInfo.type(), is(PROGRAMME_MEMBERSHIP));
   }
 }

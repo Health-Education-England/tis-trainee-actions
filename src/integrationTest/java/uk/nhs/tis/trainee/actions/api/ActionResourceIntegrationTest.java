@@ -22,6 +22,7 @@
 package uk.nhs.tis.trainee.actions.api;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -81,20 +82,15 @@ class ActionResourceIntegrationTest {
   }
 
   @Test
-  void shouldReturnBadRequestWhenNoAuthorizationHeader() throws Exception {
+  void shouldReturnBadRequestWhenGettingActionWithNoAuthorizationHeader() throws Exception {
     mockMvc.perform(get("/api/action"))
         .andExpect(status().isBadRequest());
   }
 
   @Test
   void shouldReturnEmptyArrayWhenNoTraineeActionsFound() throws Exception {
-    String payload = String.format("{\"%s\":\"%s\"}", "custom:tisId", "40");
-    String encodedPayload = Base64.getEncoder()
-        .encodeToString(payload.getBytes(StandardCharsets.UTF_8));
-    String token = String.format("aa.%s.cc", encodedPayload);
-
     mockMvc.perform(get("/api/action")
-            .header(HttpHeaders.AUTHORIZATION, token))
+            .header(HttpHeaders.AUTHORIZATION, getValidToken()))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$").isArray())
@@ -141,7 +137,65 @@ class ActionResourceIntegrationTest {
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$").isArray())
         .andExpect(jsonPath("$.length()").value(1))
-        .andExpect(jsonPath("$.[0].id").value(action1.id().toString()));
+        .andExpect(jsonPath("$.[0].id").value(action1.id().toString()))
+        .andExpect(jsonPath("$.[0].completed").isEmpty());
+  }
+
+  @Test
+  void shouldReturnBadRequestWhenCompletingActionWithNoAuthorizationHeader() throws Exception {
+    mockMvc.perform(post("/api/action/{actionId}/complete", new ObjectId()))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void shouldReturnNotFoundWhenActionToCompleteNotFound() throws Exception {
+    mockMvc.perform(post("/api/action/{actionId}/complete", new ObjectId())
+            .header(HttpHeaders.AUTHORIZATION, getValidToken()))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void shouldReturnNotFoundWhenActionToCompleteHasTraineeMismatch() throws Exception {
+    TisReferenceInfo referenceInfo = new TisReferenceInfo(TIS_ID_1, PROGRAMME_MEMBERSHIP);
+    Action action = new Action(null, REVIEW_DATA, "40", referenceInfo, START_DATE, null);
+    action = mongoTemplate.insert(action);
+
+    mockMvc.perform(post("/api/action/{actionId}/complete", action.id())
+            .header(HttpHeaders.AUTHORIZATION, getValidToken()))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void shouldReturnNotFoundWhenActionToCompleteAlreadyCompleted() throws Exception {
+    TisReferenceInfo referenceInfo = new TisReferenceInfo(TIS_ID_1, PROGRAMME_MEMBERSHIP);
+    Action action = new Action(null, REVIEW_DATA, TRAINEE_ID, referenceInfo, START_DATE,
+        Instant.now());
+    action = mongoTemplate.insert(action);
+
+    mockMvc.perform(post("/api/action/{actionId}/complete", action.id())
+            .header(HttpHeaders.AUTHORIZATION, getValidToken()))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void shouldReturnCompletedActionWhenActionToCompleteCanBeCompleted() throws Exception {
+    TisReferenceInfo referenceInfo = new TisReferenceInfo(TIS_ID_1, PROGRAMME_MEMBERSHIP);
+    Action action = new Action(null, REVIEW_DATA, TRAINEE_ID, referenceInfo, START_DATE, null);
+    action = mongoTemplate.insert(action);
+
+    mockMvc.perform(post("/api/action/{actionId}/complete", action.id())
+            .header(HttpHeaders.AUTHORIZATION, getValidToken()))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$").exists())
+        .andExpect(jsonPath("$.id").value(action.id().toString()))
+        .andExpect(jsonPath("$.type").value(REVIEW_DATA.toString()))
+        .andExpect(jsonPath("$.traineeId").value(TRAINEE_ID))
+        .andExpect(jsonPath("$.tisReferenceInfo").exists())
+        .andExpect(jsonPath("$.tisReferenceInfo.id").value(TIS_ID_1))
+        .andExpect(jsonPath("$.tisReferenceInfo.type").value(PROGRAMME_MEMBERSHIP.toString()))
+        .andExpect(jsonPath("$.due").value(START_DATE.toString()))
+        .andExpect(jsonPath("$.completed").isNotEmpty());
   }
 
   /**

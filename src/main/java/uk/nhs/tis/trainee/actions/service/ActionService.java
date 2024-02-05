@@ -26,7 +26,9 @@ import static uk.nhs.tis.trainee.actions.model.ActionType.REVIEW_DATA;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.types.ObjectId;
 import org.springframework.stereotype.Service;
 import uk.nhs.tis.trainee.actions.dto.ActionDto;
 import uk.nhs.tis.trainee.actions.dto.ProgrammeMembershipDto;
@@ -83,5 +85,39 @@ public class ActionService {
   public List<ActionDto> findIncompleteTraineeActions(String traineeId) {
     List<Action> actions = repository.findAllByTraineeIdAndCompletedIsNullOrderByDueAsc(traineeId);
     return mapper.toDtos(actions);
+  }
+
+  /**
+   * Complete a trainee's action.
+   *
+   * @param traineeId The ID of the trainee who owns the action to be completed.
+   * @param actionId  The ID of the action to complete.
+   * @return The completed action, or empty if not found.
+   */
+  public Optional<ActionDto> complete(String traineeId, String actionId) {
+    if (!ObjectId.isValid(actionId)) {
+      log.info("Skipping action completion due to invalid id.");
+      return Optional.empty();
+    }
+
+    Optional<Action> optionalAction = repository.findByIdAndTraineeId(new ObjectId(actionId),
+        traineeId);
+
+    if (optionalAction.isEmpty()) {
+      log.info("Skipping action completion as the action was not found.");
+      return Optional.empty();
+    }
+
+    Action action = optionalAction.get();
+
+    if (action.completed() != null) {
+      log.info("Skipping action completion as the action was already complete.");
+      return Optional.empty();
+    }
+
+    Action completedAction = mapper.complete(action);
+    completedAction = repository.save(completedAction);
+    log.info("Action {} marked as completed at {}.", actionId, completedAction.completed());
+    return Optional.of(mapper.toDto(completedAction));
   }
 }
