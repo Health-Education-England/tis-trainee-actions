@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "uk.nhs.tis.trainee"
-version = "0.1.2"
+version = "0.2.0"
 
 configurations {
   compileOnly {
@@ -29,7 +29,7 @@ dependencyManagement {
 }
 
 val mapstructVersion = "1.5.5.Final"
-val sentryVersion = "7.2.0"
+val sentryVersion = "7.3.0"
 
 dependencies {
   // Spring Boot starters

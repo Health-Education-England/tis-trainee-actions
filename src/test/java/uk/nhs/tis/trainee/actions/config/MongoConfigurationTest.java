@@ -107,6 +107,6 @@ class MongoConfigurationTest {
         .findAny()
         .orElseThrow();
     assertThat("Unexpected number of index keys.", indexKeys.size(), is(2));
-    assertThat("Unexpected index keys.", indexKeys, hasItems("type", "tisReference"));
+    assertThat("Unexpected index keys.", indexKeys, hasItems("type", "tisReferenceInfo"));
   }
 }

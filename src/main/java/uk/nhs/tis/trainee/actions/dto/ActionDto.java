@@ -19,17 +19,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.actions.model;
+package uk.nhs.tis.trainee.actions.dto;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import org.bson.types.ObjectId;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
+import uk.nhs.tis.trainee.actions.model.Action.TisReferenceInfo;
 
 /**
- * A representation of a pending or completed trainee action.
+ * A DTO for sending and receiving Action data.
  *
  * @param id               The ID of the action.
  * @param type             The type of action.
@@ -38,23 +35,12 @@ import org.springframework.data.mongodb.core.mapping.Field;
  * @param due              When the action is due.
  * @param completed        When the action was completed, null if not completed.
  */
-@Document(collection = "Action")
-public record Action(
-    @Id
-    ObjectId id,
-    ActionType type,
+public record ActionDto(
+    String id,
+    String type,
     String traineeId,
     TisReferenceInfo tisReferenceInfo,
     LocalDate due,
     Instant completed) {
 
-  /**
-   * A representation of the TIS record that prompted the action.
-   *
-   * @param id   The TIS ID of the entity that prompted the action.
-   * @param type The TIS reference type for the entity that prompted the action.
-   */
-  public record TisReferenceInfo(@Field("id") String id, TisReferenceType type) {
-
-  }
 }

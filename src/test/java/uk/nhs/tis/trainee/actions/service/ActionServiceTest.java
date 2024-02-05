@@ -35,10 +35,12 @@ import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PROGRAMME_MEMBER
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import uk.nhs.tis.trainee.actions.dto.ActionDto;
 import uk.nhs.tis.trainee.actions.dto.ProgrammeMembershipDto;
 import uk.nhs.tis.trainee.actions.event.Operation;
 import uk.nhs.tis.trainee.actions.mapper.ActionMapperImpl;
@@ -77,13 +79,13 @@ class ActionServiceTest {
 
     when(repository.insert(anyIterable())).thenAnswer(inv -> inv.getArgument(0));
 
-    List<Action> actions = service.updateActions(Operation.CREATE, dto);
+    List<ActionDto> actions = service.updateActions(Operation.CREATE, dto);
 
     assertThat("Unexpected action count.", actions.size(), is(1));
 
-    Action action = actions.get(0);
+    ActionDto action = actions.get(0);
     assertThat("Unexpected action id.", action.id(), nullValue());
-    assertThat("Unexpected action type.", action.type(), is(REVIEW_DATA));
+    assertThat("Unexpected action type.", action.type(), is(REVIEW_DATA.toString()));
     assertThat("Unexpected trainee id.", action.traineeId(), is(TRAINEE_ID));
     assertThat("Unexpected due date.", action.due(), is(TOMORROW));
     assertThat("Unexpected completed date.", action.completed(), nullValue());
@@ -91,5 +93,49 @@ class ActionServiceTest {
     TisReferenceInfo tisReference = action.tisReferenceInfo();
     assertThat("Unexpected TIS id.", tisReference.id(), is(TIS_ID));
     assertThat("Unexpected TIS type.", tisReference.type(), is(PROGRAMME_MEMBERSHIP));
+  }
+
+  @Test
+  void shouldReturnEmptyWhenTraineeActionsNotFound() {
+    when(repository.findAllByTraineeIdAndCompletedIsNullOrderByDueAsc(TRAINEE_ID)).thenReturn(
+        List.of());
+
+    List<ActionDto> dtos = service.findIncompleteTraineeActions(TRAINEE_ID);
+
+    assertThat("Unexpected action count.", dtos.size(), is(0));
+  }
+
+  @Test
+  void shouldReturnActionsWhenTraineeActionsFound() {
+    TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
+    ObjectId objectId1 = ObjectId.get();
+    Action action1 = new Action(objectId1, REVIEW_DATA, TRAINEE_ID, tisReference, TOMORROW,
+        null);
+    ObjectId objectId2 = ObjectId.get();
+    Action action2 = new Action(objectId2, REVIEW_DATA, TRAINEE_ID, tisReference, TOMORROW,
+        null);
+    List<Action> actions = List.of(action1, action2);
+
+    when(repository.findAllByTraineeIdAndCompletedIsNullOrderByDueAsc(TRAINEE_ID)).thenReturn(
+        actions);
+
+    List<ActionDto> dtos = service.findIncompleteTraineeActions(TRAINEE_ID);
+
+    assertThat("Unexpected action count.", dtos.size(), is(2));
+    ActionDto dto = dtos.get(0);
+    assertThat("Unexpected action ID.", dto.id(), is(objectId1.toString()));
+    dto = dtos.get(1);
+    assertThat("Unexpected action ID.", dto.id(), is(objectId2.toString()));
+
+    dtos.forEach(actDto -> {
+      assertThat("Unexpected action type.", actDto.type(), is(REVIEW_DATA.toString()));
+      assertThat("Unexpected trainee id.", actDto.traineeId(), is(TRAINEE_ID));
+      assertThat("Unexpected due date.", actDto.due(), is(TOMORROW));
+      assertThat("Unexpected completed date.", actDto.completed(), nullValue());
+
+      TisReferenceInfo refInfo = actDto.tisReferenceInfo();
+      assertThat("Unexpected TIS id.", tisReference.id(), is(TIS_ID));
+      assertThat("Unexpected TIS type.", tisReference.type(), is(PROGRAMME_MEMBERSHIP));
+    });
   }
 }

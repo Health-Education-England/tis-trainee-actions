@@ -19,12 +19,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.actions.service;
+package uk.nhs.tis.trainee.actions.repository;
 
+import static org.hamcrest.CoreMatchers.hasItems;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static uk.nhs.tis.trainee.actions.event.Operation.CREATE;
+import static uk.nhs.tis.trainee.actions.model.ActionType.REVIEW_DATA;
+import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -32,22 +34,22 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.autoconfigure.data.mongo.DataMongoTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.context.annotation.Import;
 import org.springframework.dao.DuplicateKeyException;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.tis.trainee.actions.DockerImageNames;
-import uk.nhs.tis.trainee.actions.dto.ProgrammeMembershipDto;
+import uk.nhs.tis.trainee.actions.config.MongoConfiguration;
 import uk.nhs.tis.trainee.actions.model.Action;
+import uk.nhs.tis.trainee.actions.model.Action.TisReferenceInfo;
 
-@SpringBootTest
+@DataMongoTest
 @Testcontainers
-class ActionServiceIntegrationTest {
+@Import(MongoConfiguration.class)
+class ActionRepositoryIntegrationTest {
 
   private static final String TIS_ID = UUID.randomUUID().toString();
   private static final String TRAINEE_ID_1 = UUID.randomUUID().toString();
@@ -60,45 +62,53 @@ class ActionServiceIntegrationTest {
       DockerImageNames.MONGO);
 
   @Autowired
-  private MongoTemplate mongoTemplate;
-
-  @Autowired
-  private ActionService service;
+  private ActionRepository repository;
 
   @AfterEach
   void cleanUp() {
-    mongoTemplate.findAllAndRemove(new Query(), Action.class);
+    repository.deleteAll();
   }
 
   @Test
   void shouldNotInsertDuplicateActions() {
-    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID_1, START_DATE);
+    TisReferenceInfo referenceInfo = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
+    Action action = new Action(null, REVIEW_DATA, TRAINEE_ID_1, referenceInfo, START_DATE, null);
 
-    service.updateActions(CREATE, dto);
-    assertThrows(DuplicateKeyException.class, () -> service.updateActions(CREATE, dto));
+    Action insertedAction = repository.insert(action);
+    assertThrows(DuplicateKeyException.class, () -> repository.insert(action));
 
-    Criteria criteria = Criteria.where("traineeId").is(TRAINEE_ID_1);
-    Query query = Query.query(criteria);
-    List<Action> actions = mongoTemplate.find(query, Action.class);
+    List<Action> actions = repository.findAll();
     assertThat("Unexpected action count.", actions.size(), is(1));
+    assertThat("Unexpected action.", actions.get(0), is(insertedAction));
   }
 
   @Test
   void shouldNotInsertTheSameActionForMultipleTrainees() {
-    ProgrammeMembershipDto dto1 = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID_1, START_DATE);
-    ProgrammeMembershipDto dto2 = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID_2, START_DATE);
+    TisReferenceInfo referenceInfo = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
+    Action action1 = new Action(null, REVIEW_DATA, TRAINEE_ID_1, referenceInfo, START_DATE, null);
+    Action action2 = new Action(null, REVIEW_DATA, TRAINEE_ID_2, referenceInfo, START_DATE, null);
 
-    service.updateActions(CREATE, dto1);
-    assertThrows(DuplicateKeyException.class, () -> service.updateActions(CREATE, dto2));
+    Action insertedAction = repository.insert(action1);
+    assertThrows(DuplicateKeyException.class, () -> repository.insert(action2));
 
-    Criteria criteria1 = Criteria.where("traineeId").is(TRAINEE_ID_1);
-    Query query1 = Query.query(criteria1);
-    List<Action> actions1 = mongoTemplate.find(query1, Action.class);
-    assertThat("Unexpected action count.", actions1.size(), is(1));
+    List<Action> actions = repository.findAll();
+    assertThat("Unexpected action count.", actions.size(), is(1));
+    assertThat("Unexpected action.", actions.get(0), is(insertedAction));
+  }
 
-    Criteria criteria2 = Criteria.where("traineeId").is(TRAINEE_ID_2);
-    Query query2 = Query.query(criteria2);
-    List<Action> actions2 = mongoTemplate.find(query2, Action.class);
-    assertThat("Unexpected action count.", actions2.size(), is(0));
+  @Test
+  void shouldInsertMultipleSimilarActionsForTheSameTrainee() {
+    TisReferenceInfo referenceInfo1 = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
+    Action action1 = new Action(null, REVIEW_DATA, TRAINEE_ID_1, referenceInfo1, START_DATE, null);
+    String tisId2 = UUID.randomUUID().toString();
+    TisReferenceInfo referenceInfo2 = new TisReferenceInfo(tisId2, PROGRAMME_MEMBERSHIP);
+    Action action2 = new Action(null, REVIEW_DATA, TRAINEE_ID_1, referenceInfo2, START_DATE, null);
+
+    Action insertedAction1 = repository.insert(action1);
+    Action insertedAction2 = repository.insert(action2);
+
+    List<Action> actions = repository.findAll();
+    assertThat("Unexpected action count.", actions.size(), is(2));
+    assertThat("Unexpected actions.", actions, hasItems(insertedAction1, insertedAction2));
   }
 }
