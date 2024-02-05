@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "uk.nhs.tis.trainee"
-version = "0.1.1"
+version = "0.1.2"
 
 configurations {
   compileOnly {
@@ -28,12 +28,14 @@ dependencyManagement {
   }
 }
 
+val mapstructVersion = "1.5.5.Final"
+val sentryVersion = "7.2.0"
+
 dependencies {
   // Spring Boot starters
   implementation("org.springframework.boot:spring-boot-starter-actuator")
   implementation("org.springframework.boot:spring-boot-starter-data-mongodb")
   implementation("org.springframework.boot:spring-boot-starter-web")
-  testImplementation("org.springframework.boot:spring-boot-starter-test")
 
   // AWS
   implementation("com.amazonaws:aws-xray-recorder-sdk-spring:2.15.0")
@@ -44,21 +46,12 @@ dependencies {
   annotationProcessor("org.projectlombok:lombok")
 
   // MapStruct
-  val mapstructVersion = "1.5.5.Final"
-  implementation("org.mapstruct:mapstruct:${mapstructVersion}")
-  annotationProcessor("org.mapstruct:mapstruct-processor:${mapstructVersion}")
-  testAnnotationProcessor("org.mapstruct:mapstruct-processor:${mapstructVersion}")
+  implementation("org.mapstruct:mapstruct:$mapstructVersion")
+  annotationProcessor("org.mapstruct:mapstruct-processor:$mapstructVersion")
 
   // Sentry reporting
-  val sentryVersion = "7.2.0"
   implementation("io.sentry:sentry-spring-boot-starter:$sentryVersion")
   implementation("io.sentry:sentry-logback:$sentryVersion")
-
-  testImplementation("org.springframework.boot:spring-boot-testcontainers")
-  testImplementation("org.testcontainers:junit-jupiter")
-  testImplementation("org.testcontainers:localstack")
-  testImplementation("org.testcontainers:mongodb")
-  testImplementation("org.awaitility:awaitility")
 }
 
 java {
@@ -84,6 +77,49 @@ sonarqube {
   }
 }
 
+testing {
+  suites {
+
+    configureEach {
+      if (this is JvmTestSuite) {
+        useJUnitJupiter()
+        dependencies {
+          implementation(project())
+          implementation("org.springframework.boot:spring-boot-starter-test")
+        }
+      }
+    }
+
+    val test by getting(JvmTestSuite::class) {
+      dependencies {
+        annotationProcessor("org.mapstruct:mapstruct-processor:$mapstructVersion")
+      }
+    }
+
+    val integrationTest by registering(JvmTestSuite::class)  {
+      dependencies {
+        implementation("org.springframework.boot:spring-boot-testcontainers")
+        implementation("org.testcontainers:junit-jupiter")
+        implementation("org.testcontainers:localstack")
+        implementation("org.testcontainers:mongodb")
+        implementation("org.awaitility:awaitility")
+      }
+
+      targets {
+        all {
+          testTask.configure {
+            systemProperty("spring.profiles.active", "test")
+          }
+        }
+      }
+    }
+
+    val integrationTestImplementation by configurations.getting {
+      extendsFrom(configurations.implementation.get())
+    }
+  }
+}
+
 tasks.jacocoTestReport {
   reports {
     html.required.set(true)
@@ -93,5 +129,4 @@ tasks.jacocoTestReport {
 
 tasks.test {
   finalizedBy(tasks.jacocoTestReport)
-  useJUnitPlatform()
 }

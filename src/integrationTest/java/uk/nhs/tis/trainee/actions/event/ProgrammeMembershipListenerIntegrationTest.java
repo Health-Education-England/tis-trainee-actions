@@ -61,7 +61,7 @@ import uk.nhs.tis.trainee.actions.model.Action;
 import uk.nhs.tis.trainee.actions.model.Action.TisReferenceInfo;
 
 @SpringBootTest
-@Testcontainers(disabledWithoutDocker = true)
+@Testcontainers
 class ProgrammeMembershipListenerIntegrationTest {
 
   private static final String PROGRAMME_MEMBERSHIP_ID = UUID.randomUUID().toString();
@@ -89,6 +89,7 @@ class ProgrammeMembershipListenerIntegrationTest {
     registry.add("spring.cloud.aws.credentials.secret-key", localstack::getSecretKey);
     registry.add("spring.cloud.aws.sqs.endpoint",
         () -> localstack.getEndpointOverride(SQS).toString());
+    registry.add("spring.cloud.aws.sqs.enabled", () -> true);
   }
 
   @BeforeAll
