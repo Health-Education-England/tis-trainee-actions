@@ -22,6 +22,7 @@
 package uk.nhs.tis.trainee.actions.repository;
 
 import java.util.List;
+import java.util.Optional;
 import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
@@ -40,4 +41,13 @@ public interface ActionRepository extends MongoRepository<Action, ObjectId> {
    * @return A list of incomplete actions for the trainee.
    */
   List<Action> findAllByTraineeIdAndCompletedIsNullOrderByDueAsc(String traineeId);
+
+  /**
+   * Find an action by its action ID and associated trainee ID.
+   *
+   * @param id        The ID of the action to find.
+   * @param traineeId The trainee that should be associated with the action.
+   * @return The found trainee action, or empty if not found.
+   */
+  Optional<Action> findByIdAndTraineeId(ObjectId id, String traineeId);
 }
