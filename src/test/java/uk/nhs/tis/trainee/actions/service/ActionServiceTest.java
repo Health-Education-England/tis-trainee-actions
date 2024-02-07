@@ -34,20 +34,26 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.actions.model.ActionType.REVIEW_DATA;
+import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
+import static uk.nhs.tis.trainee.actions.service.ActionService.PLACEMENT_TYPES_TO_ACT_ON;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import uk.nhs.tis.trainee.actions.dto.ActionDto;
+import uk.nhs.tis.trainee.actions.dto.PlacementDto;
 import uk.nhs.tis.trainee.actions.dto.ProgrammeMembershipDto;
 import uk.nhs.tis.trainee.actions.event.Operation;
 import uk.nhs.tis.trainee.actions.mapper.ActionMapperImpl;
@@ -61,6 +67,7 @@ class ActionServiceTest {
   private static final String TRAINEE_ID = UUID.randomUUID().toString();
   private static final ObjectId ACTION_ID = ObjectId.get();
   private static final LocalDate TOMORROW = LocalDate.now().plusDays(1);
+  private static final String PLACEMENT_TYPE = "In Post";
 
   private ActionService service;
   private ActionRepository repository;
@@ -224,5 +231,51 @@ class ActionServiceTest {
     TisReferenceInfo refInfo = actionDto.tisReferenceInfo();
     assertThat("Unexpected TIS id.", refInfo.id(), is(TIS_ID));
     assertThat("Unexpected TIS type.", refInfo.type(), is(PROGRAMME_MEMBERSHIP));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = Operation.class, names = {"CREATE"}, mode = EXCLUDE)
+  void shouldNotInsertActionWhenPlacementOperationNotSupported(Operation operation) {
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, TOMORROW, PLACEMENT_TYPE);
+
+    service.updateActions(operation, dto);
+
+    verifyNoInteractions(repository);
+  }
+
+  @Test
+  void shouldNotInsertActionWhenPlacementTypeIgnored() {
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, TOMORROW, "ignored placement type");
+
+    service.updateActions(Operation.CREATE, dto);
+
+    verifyNoInteractions(repository);
+  }
+
+  @ParameterizedTest
+  @MethodSource("listPlacementTypes")
+  void shouldInsertDataReviewActionOnPlacementCreate(String placementType) {
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, TOMORROW, placementType);
+
+    when(repository.insert(anyIterable())).thenAnswer(inv -> inv.getArgument(0));
+
+    List<ActionDto> actions = service.updateActions(Operation.CREATE, dto);
+
+    assertThat("Unexpected action count.", actions.size(), is(1));
+
+    ActionDto action = actions.get(0);
+    assertThat("Unexpected action id.", action.id(), nullValue());
+    assertThat("Unexpected action type.", action.type(), is(REVIEW_DATA.toString()));
+    assertThat("Unexpected trainee id.", action.traineeId(), is(TRAINEE_ID));
+    assertThat("Unexpected due date.", action.due(), is(TOMORROW.minusWeeks(12)));
+    assertThat("Unexpected completed date.", action.completed(), nullValue());
+
+    TisReferenceInfo tisReference = action.tisReferenceInfo();
+    assertThat("Unexpected TIS id.", tisReference.id(), is(TIS_ID));
+    assertThat("Unexpected TIS type.", tisReference.type(), is(PLACEMENT));
+  }
+
+  static Stream<String> listPlacementTypes() {
+    return PLACEMENT_TYPES_TO_ACT_ON.stream();
   }
 }

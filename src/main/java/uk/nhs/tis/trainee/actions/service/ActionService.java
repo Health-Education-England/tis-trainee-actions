@@ -31,6 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
 import org.springframework.stereotype.Service;
 import uk.nhs.tis.trainee.actions.dto.ActionDto;
+import uk.nhs.tis.trainee.actions.dto.PlacementDto;
 import uk.nhs.tis.trainee.actions.dto.ProgrammeMembershipDto;
 import uk.nhs.tis.trainee.actions.event.Operation;
 import uk.nhs.tis.trainee.actions.mapper.ActionMapper;
@@ -44,12 +45,43 @@ import uk.nhs.tis.trainee.actions.repository.ActionRepository;
 @Service
 public class ActionService {
 
+  public static final List<String> PLACEMENT_TYPES_TO_ACT_ON
+      = List.of("In post", "In post - Acting up", "In Post - Extension");
+
   private final ActionRepository repository;
   private final ActionMapper mapper;
 
   public ActionService(ActionRepository repository, ActionMapper mapper) {
     this.repository = repository;
     this.mapper = mapper;
+  }
+
+  /**
+   * Updates the actions associated with the given Operation and Placement data.
+   *
+   * @param operation The operation that triggered the update.
+   * @param dto       The Placement data associated with the operation.
+   * @return A list of updated actions, empty if no actions required.
+   */
+  public List<ActionDto> updateActions(Operation operation, PlacementDto dto) {
+    List<Action> actions = new ArrayList<>();
+
+    if (Objects.equals(operation, Operation.CREATE)) {
+      if (PLACEMENT_TYPES_TO_ACT_ON.stream().anyMatch(dto.placementType()::equalsIgnoreCase)) {
+        Action action = mapper.toAction(dto, REVIEW_DATA);
+        actions.add(action);
+      } else {
+        log.info("Placement {} of type {} is ignored", dto.id(), dto.placementType());
+      }
+    }
+
+    if (actions.isEmpty()) {
+      log.info("No new actions required for Placement {}", dto.id());
+      return List.of();
+    }
+
+    log.info("Adding {} new action(s) for Placement {}.", actions.size(), dto.id());
+    return mapper.toDtos(repository.insert(actions));
   }
 
   /**
