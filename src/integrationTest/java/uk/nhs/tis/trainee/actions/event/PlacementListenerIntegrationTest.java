@@ -118,7 +118,7 @@ class PlacementListenerIntegrationTest {
             "data": {
               "tisId": "%s",
               "traineeId": "%s",
-              "startDate": "%s"
+              "dateFrom": "%s"
             },
             "operation": "%s"
           }

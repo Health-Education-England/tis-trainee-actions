@@ -28,7 +28,7 @@ import uk.nhs.tis.trainee.actions.dto.PlacementDto;
 import uk.nhs.tis.trainee.actions.service.ActionService;
 
 /**
- * A listener for programme membership events.
+ * A listener for placement events.
  */
 @Slf4j
 @Component
