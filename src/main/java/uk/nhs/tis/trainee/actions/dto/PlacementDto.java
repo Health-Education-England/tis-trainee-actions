@@ -28,12 +28,13 @@ import java.time.LocalDate;
 /**
  * A representation of a placement.
  *
- * @param id        The placement ID.
- * @param traineeId The trainee ID associated with the placement.
- * @param startDate The placement start date.
+ * @param id            The placement ID.
+ * @param traineeId     The trainee ID associated with the placement.
+ * @param startDate     The placement start date.
+ * @param placementType The placement type.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record PlacementDto(@JsonAlias("tisId") String id, String traineeId,
-                           @JsonAlias("dateFrom") LocalDate startDate) {
+                           @JsonAlias("dateFrom") LocalDate startDate, String placementType) {
 
 }

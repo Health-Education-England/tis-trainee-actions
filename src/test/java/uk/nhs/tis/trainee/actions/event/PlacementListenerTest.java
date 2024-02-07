@@ -69,7 +69,8 @@ class PlacementListenerTest {
             "data": {
               "tisId": "%s",
               "traineeId": "%s",
-              "dateFrom": "%s"
+              "dateFrom": "%s",
+              "placementType": "In post"
             }
           }
         }""".formatted(PLACEMENT_ID, TRAINEE_ID, START_DATE);
@@ -102,7 +103,8 @@ class PlacementListenerTest {
             "data": {
               "tisId": "%s",
               "traineeId": "%s",
-              "dateFrom": "%s"
+              "dateFrom": "%s",
+              "placementType": "In post"
             },
             "operation": "%s"
           }

@@ -36,17 +36,21 @@ import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.actions.model.ActionType.REVIEW_DATA;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
+import static uk.nhs.tis.trainee.actions.service.ActionService.PLACEMENT_TYPES_TO_ACT_ON;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import uk.nhs.tis.trainee.actions.dto.ActionDto;
 import uk.nhs.tis.trainee.actions.dto.PlacementDto;
@@ -63,6 +67,7 @@ class ActionServiceTest {
   private static final String TRAINEE_ID = UUID.randomUUID().toString();
   private static final ObjectId ACTION_ID = ObjectId.get();
   private static final LocalDate TOMORROW = LocalDate.now().plusDays(1);
+  private static final String PLACEMENT_TYPE = "In Post";
 
   private ActionService service;
   private ActionRepository repository;
@@ -231,7 +236,7 @@ class ActionServiceTest {
   @ParameterizedTest
   @EnumSource(value = Operation.class, names = {"CREATE"}, mode = EXCLUDE)
   void shouldNotInsertActionWhenPlacementOperationNotSupported(Operation operation) {
-    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, TOMORROW);
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, TOMORROW, PLACEMENT_TYPE);
 
     service.updateActions(operation, dto);
 
@@ -239,8 +244,18 @@ class ActionServiceTest {
   }
 
   @Test
-  void shouldInsertDataReviewActionOnPlacementCreate() {
-    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, TOMORROW);
+  void shouldNotInsertActionWhenPlacementTypeIgnored() {
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, TOMORROW, "ignored placement type");
+
+    service.updateActions(Operation.CREATE, dto);
+
+    verifyNoInteractions(repository);
+  }
+
+  @ParameterizedTest
+  @MethodSource("listPlacementTypes")
+  void shouldInsertDataReviewActionOnPlacementCreate(String placementType) {
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, TOMORROW, placementType);
 
     when(repository.insert(anyIterable())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -258,5 +273,9 @@ class ActionServiceTest {
     TisReferenceInfo tisReference = action.tisReferenceInfo();
     assertThat("Unexpected TIS id.", tisReference.id(), is(TIS_ID));
     assertThat("Unexpected TIS type.", tisReference.type(), is(PLACEMENT));
+  }
+
+  static Stream<String> listPlacementTypes() {
+    return PLACEMENT_TYPES_TO_ACT_ON.stream();
   }
 }

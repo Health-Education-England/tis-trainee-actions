@@ -45,6 +45,9 @@ import uk.nhs.tis.trainee.actions.repository.ActionRepository;
 @Service
 public class ActionService {
 
+  public static final List<String> PLACEMENT_TYPES_TO_ACT_ON
+      = List.of("In post", "In post - Acting up", "In Post - Extension");
+
   private final ActionRepository repository;
   private final ActionMapper mapper;
 
@@ -64,8 +67,12 @@ public class ActionService {
     List<Action> actions = new ArrayList<>();
 
     if (Objects.equals(operation, Operation.CREATE)) {
-      Action action = mapper.toAction(dto, REVIEW_DATA);
-      actions.add(action);
+      if (PLACEMENT_TYPES_TO_ACT_ON.stream().anyMatch(dto.placementType()::equalsIgnoreCase)) {
+        Action action = mapper.toAction(dto, REVIEW_DATA);
+        actions.add(action);
+      } else {
+        log.info("Placement {} of type {} is ignored", dto.id(), dto.placementType());
+      }
     }
 
     if (actions.isEmpty()) {
