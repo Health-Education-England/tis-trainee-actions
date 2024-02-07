@@ -21,13 +21,11 @@
 
 package uk.nhs.tis.trainee.actions.mapper;
 
-import java.time.LocalDate;
 import static org.mapstruct.MappingConstants.ComponentModel.SPRING;
 
 import java.util.List;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import org.mapstruct.MappingConstants.ComponentModel;
 import uk.nhs.tis.trainee.actions.dto.PlacementDto;
 import uk.nhs.tis.trainee.actions.dto.ActionDto;
 import uk.nhs.tis.trainee.actions.dto.ProgrammeMembershipDto;
@@ -100,7 +98,7 @@ public interface ActionMapper {
    * @return The created action.
    */
   @Mapping(target = "id", ignore = true)
-  @Mapping(target = "type", source = "type")
+  @Mapping(target = "type")
   @Mapping(target = "traineeId", source = "dto.traineeId")
   @Mapping(target = "tisReferenceInfo", source = "dto")
   @Mapping(target = "due", expression = "java( dto.startDate() != null ? dto.startDate().minusWeeks(12) : null )")

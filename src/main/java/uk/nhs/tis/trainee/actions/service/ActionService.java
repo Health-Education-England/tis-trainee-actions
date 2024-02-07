@@ -60,7 +60,7 @@ public class ActionService {
    * @param dto       The Placement data associated with the operation.
    * @return A list of updated actions, empty if no actions required.
    */
-  public List<Action> updateActions(Operation operation, PlacementDto dto) {
+  public List<ActionDto> updateActions(Operation operation, PlacementDto dto) {
     List<Action> actions = new ArrayList<>();
 
     if (Objects.equals(operation, Operation.CREATE)) {
@@ -74,7 +74,7 @@ public class ActionService {
     }
 
     log.info("Adding {} new action(s) for Placement {}.", actions.size(), dto.id());
-    return repository.insert(actions);
+    return mapper.toDtos(repository.insert(actions));
   }
 
   /**

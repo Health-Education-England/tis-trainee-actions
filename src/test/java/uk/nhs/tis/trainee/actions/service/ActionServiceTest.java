@@ -34,6 +34,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.actions.model.ActionType.REVIEW_DATA;
+import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 
 import java.time.Instant;
@@ -48,6 +49,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import uk.nhs.tis.trainee.actions.dto.ActionDto;
+import uk.nhs.tis.trainee.actions.dto.PlacementDto;
 import uk.nhs.tis.trainee.actions.dto.ProgrammeMembershipDto;
 import uk.nhs.tis.trainee.actions.event.Operation;
 import uk.nhs.tis.trainee.actions.mapper.ActionMapperImpl;
@@ -224,5 +226,37 @@ class ActionServiceTest {
     TisReferenceInfo refInfo = actionDto.tisReferenceInfo();
     assertThat("Unexpected TIS id.", refInfo.id(), is(TIS_ID));
     assertThat("Unexpected TIS type.", refInfo.type(), is(PROGRAMME_MEMBERSHIP));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = Operation.class, names = {"CREATE"}, mode = EXCLUDE)
+  void shouldNotInsertActionWhenPlacementOperationNotSupported(Operation operation) {
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, TOMORROW);
+
+    service.updateActions(operation, dto);
+
+    verifyNoInteractions(repository);
+  }
+
+  @Test
+  void shouldInsertDataReviewActionOnPlacementCreate() {
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, TOMORROW);
+
+    when(repository.insert(anyIterable())).thenAnswer(inv -> inv.getArgument(0));
+
+    List<ActionDto> actions = service.updateActions(Operation.CREATE, dto);
+
+    assertThat("Unexpected action count.", actions.size(), is(1));
+
+    ActionDto action = actions.get(0);
+    assertThat("Unexpected action id.", action.id(), nullValue());
+    assertThat("Unexpected action type.", action.type(), is(REVIEW_DATA.toString()));
+    assertThat("Unexpected trainee id.", action.traineeId(), is(TRAINEE_ID));
+    assertThat("Unexpected due date.", action.due(), is(TOMORROW.minusWeeks(12)));
+    assertThat("Unexpected completed date.", action.completed(), nullValue());
+
+    TisReferenceInfo tisReference = action.tisReferenceInfo();
+    assertThat("Unexpected TIS id.", tisReference.id(), is(TIS_ID));
+    assertThat("Unexpected TIS type.", tisReference.type(), is(PLACEMENT));
   }
 }
