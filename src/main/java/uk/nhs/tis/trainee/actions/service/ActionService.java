@@ -115,7 +115,8 @@ public class ActionService {
    * @return The found actions, empty if no actions found.
    */
   public List<ActionDto> findIncompleteTraineeActions(String traineeId) {
-    List<Action> actions = repository.findAllByTraineeIdAndCompletedIsNullOrderByDueAsc(traineeId);
+    List<Action> actions = repository.findAllByTraineeIdAndCompletedIsNullOrderByDueByAsc(
+        traineeId);
     return mapper.toDtos(actions);
   }
 

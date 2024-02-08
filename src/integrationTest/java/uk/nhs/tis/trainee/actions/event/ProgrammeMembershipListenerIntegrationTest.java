@@ -65,7 +65,8 @@ import uk.nhs.tis.trainee.actions.model.Action.TisReferenceInfo;
 class ProgrammeMembershipListenerIntegrationTest {
 
   private static final String PROGRAMME_MEMBERSHIP_ID = UUID.randomUUID().toString();
-  private static final LocalDate START_DATE = LocalDate.now();
+  private static final LocalDate NOW = LocalDate.now();
+  private static final LocalDate START_DATE = NOW.plusDays(1);
 
   private static final String PROGRAMME_MEMBERSHIP_SYNCED_QUEUE = UUID.randomUUID().toString();
 
@@ -110,7 +111,7 @@ class ProgrammeMembershipListenerIntegrationTest {
   }
 
   @Test
-  void shouldInsertDataReviewActionWhenProgrammeMembershipCreated() throws JsonProcessingException {
+  void shouldInsertReviewDataActionWhenProgrammeMembershipCreated() throws JsonProcessingException {
     String traineeId = UUID.randomUUID().toString();
     String eventString = """
         {
@@ -148,7 +149,8 @@ class ProgrammeMembershipListenerIntegrationTest {
     assertThat("Unexpected action id.", action.id(), notNullValue());
     assertThat("Unexpected action type.", action.type(), is(REVIEW_DATA));
     assertThat("Unexpected trainee id.", action.traineeId(), is(traineeId));
-    assertThat("Unexpected due date.", action.due(), is(START_DATE));
+    assertThat("Unexpected available from date.", action.availableFrom(), is(NOW));
+    assertThat("Unexpected due by date.", action.dueBy(), is(START_DATE));
     assertThat("Unexpected completed date.", action.completed(), nullValue());
 
     TisReferenceInfo tisReference = action.tisReferenceInfo();

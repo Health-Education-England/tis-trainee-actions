@@ -1,7 +1,10 @@
+application:
+  queues:
+    placement-synced: dummy
+    programme-membership-synced: dummy
+
 spring:
   cloud:
     aws:
-      region:
-        static: aws-global
       sqs:
         enabled: false

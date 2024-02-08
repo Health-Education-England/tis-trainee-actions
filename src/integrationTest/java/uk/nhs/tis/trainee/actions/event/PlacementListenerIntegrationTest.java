@@ -110,7 +110,7 @@ class PlacementListenerIntegrationTest {
   }
 
   @Test
-  void shouldInsertDataReviewActionWhenPlacementCreated() throws JsonProcessingException {
+  void shouldInsertReviewDataActionWhenPlacementCreated() throws JsonProcessingException {
     String traineeId = UUID.randomUUID().toString();
     String eventString = """
         {
@@ -149,7 +149,9 @@ class PlacementListenerIntegrationTest {
     assertThat("Unexpected action id.", action.id(), notNullValue());
     assertThat("Unexpected action type.", action.type(), is(REVIEW_DATA));
     assertThat("Unexpected trainee id.", action.traineeId(), is(traineeId));
-    assertThat("Unexpected due date.", action.due(), is(START_DATE.minusWeeks(12)));
+    assertThat("Unexpected available from date.", action.availableFrom(),
+        is(START_DATE.minusWeeks(12)));
+    assertThat("Unexpected due by date.", action.dueBy(), is(START_DATE));
     assertThat("Unexpected completed date.", action.completed(), nullValue());
 
     TisReferenceInfo tisReference = action.tisReferenceInfo();

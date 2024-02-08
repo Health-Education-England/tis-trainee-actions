@@ -35,7 +35,8 @@ import org.springframework.data.mongodb.core.mapping.Field;
  * @param type             The type of action.
  * @param traineeId        The ID of the trainee who the action is for.
  * @param tisReferenceInfo The TIS core object associated with the action.
- * @param due              When the action is due.
+ * @param availableFrom    When the action is available to complete.
+ * @param dueBy            When the action is due to be completed by.
  * @param completed        When the action was completed, null if not completed.
  */
 @Document(collection = "Action")
@@ -45,7 +46,8 @@ public record Action(
     ActionType type,
     String traineeId,
     TisReferenceInfo tisReferenceInfo,
-    LocalDate due,
+    LocalDate availableFrom,
+    LocalDate dueBy,
     Instant completed) {
 
   /**
