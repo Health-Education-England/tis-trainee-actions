@@ -90,8 +90,8 @@ class ActionResourceTest {
         .encodeToString(payload.getBytes(StandardCharsets.UTF_8));
     String token = String.format("aa.%s.cc", encodedPayload);
 
-    ActionDto dto1 = new ActionDto("1", null, null, null, null, null);
-    ActionDto dto2 = new ActionDto("2", null, null, null, null, null);
+    ActionDto dto1 = new ActionDto("1", null, null, null, null, null, null);
+    ActionDto dto2 = new ActionDto("2", null, null, null, null, null, null);
     when(service.findIncompleteTraineeActions(TRAINEE_ID)).thenReturn(List.of(dto1, dto2));
 
     ResponseEntity<List<ActionDto>> response = controller.getTraineeActions(token);
@@ -156,7 +156,7 @@ class ActionResourceTest {
         .encodeToString(payload.getBytes(StandardCharsets.UTF_8));
     String token = String.format("aa.%s.cc", encodedPayload);
 
-    ActionDto dto = new ActionDto("1", null, null, null, null, null);
+    ActionDto dto = new ActionDto("1", null, null, null, null, null, null);
     when(service.complete(TRAINEE_ID, ACTION_ID)).thenReturn(Optional.of(dto));
 
     ResponseEntity<ActionDto> response = controller.completeAction(token, ACTION_ID);

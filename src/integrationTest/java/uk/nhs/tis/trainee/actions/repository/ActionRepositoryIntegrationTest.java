@@ -54,7 +54,8 @@ class ActionRepositoryIntegrationTest {
   private static final String TIS_ID = UUID.randomUUID().toString();
   private static final String TRAINEE_ID_1 = UUID.randomUUID().toString();
   private static final String TRAINEE_ID_2 = UUID.randomUUID().toString();
-  private static final LocalDate START_DATE = LocalDate.now().minusDays(1);
+  private static final LocalDate PAST = LocalDate.now().minusDays(1);
+  private static final LocalDate FUTURE = LocalDate.now().plusDays(1);
 
   @Container
   @ServiceConnection
@@ -72,7 +73,7 @@ class ActionRepositoryIntegrationTest {
   @Test
   void shouldNotInsertDuplicateActions() {
     TisReferenceInfo referenceInfo = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
-    Action action = new Action(null, REVIEW_DATA, TRAINEE_ID_1, referenceInfo, START_DATE, null);
+    Action action = new Action(null, REVIEW_DATA, TRAINEE_ID_1, referenceInfo, PAST, FUTURE, null);
 
     Action insertedAction = repository.insert(action);
     assertThrows(DuplicateKeyException.class, () -> repository.insert(action));
@@ -85,8 +86,8 @@ class ActionRepositoryIntegrationTest {
   @Test
   void shouldNotInsertTheSameActionForMultipleTrainees() {
     TisReferenceInfo referenceInfo = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
-    Action action1 = new Action(null, REVIEW_DATA, TRAINEE_ID_1, referenceInfo, START_DATE, null);
-    Action action2 = new Action(null, REVIEW_DATA, TRAINEE_ID_2, referenceInfo, START_DATE, null);
+    Action action1 = new Action(null, REVIEW_DATA, TRAINEE_ID_1, referenceInfo, PAST, FUTURE, null);
+    Action action2 = new Action(null, REVIEW_DATA, TRAINEE_ID_2, referenceInfo, PAST, FUTURE, null);
 
     Action insertedAction = repository.insert(action1);
     assertThrows(DuplicateKeyException.class, () -> repository.insert(action2));
@@ -99,10 +100,12 @@ class ActionRepositoryIntegrationTest {
   @Test
   void shouldInsertMultipleSimilarActionsForTheSameTrainee() {
     TisReferenceInfo referenceInfo1 = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
-    Action action1 = new Action(null, REVIEW_DATA, TRAINEE_ID_1, referenceInfo1, START_DATE, null);
+    Action action1 = new Action(null, REVIEW_DATA, TRAINEE_ID_1, referenceInfo1, PAST, FUTURE,
+        null);
     String tisId2 = UUID.randomUUID().toString();
     TisReferenceInfo referenceInfo2 = new TisReferenceInfo(tisId2, PROGRAMME_MEMBERSHIP);
-    Action action2 = new Action(null, REVIEW_DATA, TRAINEE_ID_1, referenceInfo2, START_DATE, null);
+    Action action2 = new Action(null, REVIEW_DATA, TRAINEE_ID_1, referenceInfo2, PAST, FUTURE,
+        null);
 
     Action insertedAction1 = repository.insert(action1);
     Action insertedAction2 = repository.insert(action2);

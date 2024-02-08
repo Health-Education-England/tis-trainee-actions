@@ -63,7 +63,9 @@ class ActionResourceIntegrationTest {
   private static final String TIS_ID_2 = UUID.randomUUID().toString();
   private static final String TIS_ID_3 = UUID.randomUUID().toString();
   private static final String TRAINEE_ID = UUID.randomUUID().toString();
-  private static final LocalDate START_DATE = LocalDate.now();
+  private static final LocalDate NOW = LocalDate.now();
+  private static final LocalDate PAST = NOW.minusDays(1);
+  private static final LocalDate FUTURE = NOW.plusDays(1);
 
   @Container
   @ServiceConnection
@@ -98,16 +100,16 @@ class ActionResourceIntegrationTest {
   }
 
   @Test
-  void shouldReturnActionsOrderedByDueDate() throws Exception {
+  void shouldReturnActionsOrderedByDueByDate() throws Exception {
     TisReferenceInfo referenceInfo1 = new TisReferenceInfo(TIS_ID_1, PROGRAMME_MEMBERSHIP);
-    Action action1 = new Action(ObjectId.get(), REVIEW_DATA, TRAINEE_ID, referenceInfo1,
-        START_DATE.plusDays(1), null);
+    Action action1 = new Action(ObjectId.get(), REVIEW_DATA, TRAINEE_ID, referenceInfo1, null,
+        FUTURE, null);
     TisReferenceInfo referenceInfo2 = new TisReferenceInfo(TIS_ID_2, PROGRAMME_MEMBERSHIP);
-    Action action2 = new Action(ObjectId.get(), REVIEW_DATA, TRAINEE_ID, referenceInfo2,
-        START_DATE.minusDays(1), null);
-    TisReferenceInfo referenceInfo3 = new TisReferenceInfo(TIS_ID_3, PROGRAMME_MEMBERSHIP);
-    Action action3 = new Action(ObjectId.get(), REVIEW_DATA, TRAINEE_ID, referenceInfo3, START_DATE,
+    Action action2 = new Action(ObjectId.get(), REVIEW_DATA, TRAINEE_ID, referenceInfo2, null, PAST,
         null);
+    TisReferenceInfo referenceInfo3 = new TisReferenceInfo(TIS_ID_3, PROGRAMME_MEMBERSHIP);
+    Action action3 = new Action(ObjectId.get(), REVIEW_DATA, TRAINEE_ID, referenceInfo3, null,
+        NOW, null);
 
     mongoTemplate.insertAll(List.of(action1, action2, action3));
     mockMvc.perform(get("/api/action")
@@ -124,11 +126,11 @@ class ActionResourceIntegrationTest {
   @Test
   void shouldReturnOnlyIncompleteActions() throws Exception {
     TisReferenceInfo referenceInfo1 = new TisReferenceInfo(TIS_ID_1, PROGRAMME_MEMBERSHIP);
-    Action action1 = new Action(ObjectId.get(), REVIEW_DATA, TRAINEE_ID, referenceInfo1, START_DATE,
-        null);
+    Action action1 = new Action(ObjectId.get(), REVIEW_DATA, TRAINEE_ID, referenceInfo1, null,
+        NOW, null);
     TisReferenceInfo referenceInfo2 = new TisReferenceInfo(TIS_ID_2, PROGRAMME_MEMBERSHIP);
-    Action action2 = new Action(ObjectId.get(), REVIEW_DATA, TRAINEE_ID, referenceInfo2, START_DATE,
-        Instant.now());
+    Action action2 = new Action(ObjectId.get(), REVIEW_DATA, TRAINEE_ID, referenceInfo2, null,
+        NOW, Instant.now());
     mongoTemplate.insertAll(List.of(action1, action2));
 
     mockMvc.perform(get("/api/action")
@@ -157,7 +159,7 @@ class ActionResourceIntegrationTest {
   @Test
   void shouldReturnNotFoundWhenActionToCompleteHasTraineeMismatch() throws Exception {
     TisReferenceInfo referenceInfo = new TisReferenceInfo(TIS_ID_1, PROGRAMME_MEMBERSHIP);
-    Action action = new Action(null, REVIEW_DATA, "40", referenceInfo, START_DATE, null);
+    Action action = new Action(null, REVIEW_DATA, "40", referenceInfo, null, NOW, null);
     action = mongoTemplate.insert(action);
 
     mockMvc.perform(post("/api/action/{actionId}/complete", action.id())
@@ -168,7 +170,7 @@ class ActionResourceIntegrationTest {
   @Test
   void shouldReturnNotFoundWhenActionToCompleteAlreadyCompleted() throws Exception {
     TisReferenceInfo referenceInfo = new TisReferenceInfo(TIS_ID_1, PROGRAMME_MEMBERSHIP);
-    Action action = new Action(null, REVIEW_DATA, TRAINEE_ID, referenceInfo, START_DATE,
+    Action action = new Action(null, REVIEW_DATA, TRAINEE_ID, referenceInfo, null, NOW,
         Instant.now());
     action = mongoTemplate.insert(action);
 
@@ -180,7 +182,7 @@ class ActionResourceIntegrationTest {
   @Test
   void shouldReturnCompletedActionWhenActionToCompleteCanBeCompleted() throws Exception {
     TisReferenceInfo referenceInfo = new TisReferenceInfo(TIS_ID_1, PROGRAMME_MEMBERSHIP);
-    Action action = new Action(null, REVIEW_DATA, TRAINEE_ID, referenceInfo, START_DATE, null);
+    Action action = new Action(null, REVIEW_DATA, TRAINEE_ID, referenceInfo, null, NOW, null);
     action = mongoTemplate.insert(action);
 
     mockMvc.perform(post("/api/action/{actionId}/complete", action.id())
@@ -194,7 +196,7 @@ class ActionResourceIntegrationTest {
         .andExpect(jsonPath("$.tisReferenceInfo").exists())
         .andExpect(jsonPath("$.tisReferenceInfo.id").value(TIS_ID_1))
         .andExpect(jsonPath("$.tisReferenceInfo.type").value(PROGRAMME_MEMBERSHIP.toString()))
-        .andExpect(jsonPath("$.due").value(START_DATE.toString()))
+        .andExpect(jsonPath("$.dueBy").value(NOW.toString()))
         .andExpect(jsonPath("$.completed").isNotEmpty());
   }
 

@@ -40,7 +40,7 @@ public interface ActionRepository extends MongoRepository<Action, ObjectId> {
    * @param traineeId The ID of the trainee to get actions for.
    * @return A list of incomplete actions for the trainee.
    */
-  List<Action> findAllByTraineeIdAndCompletedIsNullOrderByDueAsc(String traineeId);
+  List<Action> findAllByTraineeIdAndCompletedIsNullOrderByDueByAsc(String traineeId);
 
   /**
    * Find an action by its action ID and associated trainee ID.

@@ -76,7 +76,8 @@ public interface ActionMapper {
   @Mapping(target = "type")
   @Mapping(target = "traineeId", source = "dto.traineeId")
   @Mapping(target = "tisReferenceInfo", source = "dto")
-  @Mapping(target = "due", source = "dto.startDate")
+  @Mapping(target = "availableFrom", expression = "java(java.time.LocalDate.now())")
+  @Mapping(target = "dueBy", source = "dto.startDate")
   @Mapping(target = "completed", ignore = true)
   Action toAction(ProgrammeMembershipDto dto, ActionType type);
 
@@ -91,8 +92,9 @@ public interface ActionMapper {
   @Mapping(target = "type")
   @Mapping(target = "traineeId", source = "dto.traineeId")
   @Mapping(target = "tisReferenceInfo", source = "dto")
-  @Mapping(target = "due",
+  @Mapping(target = "availableFrom",
       expression = "java( dto.startDate() != null ? dto.startDate().minusWeeks(12) : null )")
+  @Mapping(target = "dueBy", source = "dto.startDate")
   @Mapping(target = "completed", ignore = true)
   Action toAction(PlacementDto dto, ActionType type);
 

@@ -48,7 +48,6 @@ import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
@@ -59,6 +58,7 @@ import uk.nhs.tis.trainee.actions.event.Operation;
 import uk.nhs.tis.trainee.actions.mapper.ActionMapperImpl;
 import uk.nhs.tis.trainee.actions.model.Action;
 import uk.nhs.tis.trainee.actions.model.Action.TisReferenceInfo;
+import uk.nhs.tis.trainee.actions.model.TisReferenceType;
 import uk.nhs.tis.trainee.actions.repository.ActionRepository;
 
 class ActionServiceTest {
@@ -66,7 +66,9 @@ class ActionServiceTest {
   private static final String TIS_ID = UUID.randomUUID().toString();
   private static final String TRAINEE_ID = UUID.randomUUID().toString();
   private static final ObjectId ACTION_ID = ObjectId.get();
-  private static final LocalDate TOMORROW = LocalDate.now().plusDays(1);
+  private static final LocalDate NOW = LocalDate.now();
+  private static final LocalDate PAST = NOW.minusDays(1);
+  private static final LocalDate FUTURE = NOW.plusDays(1);
   private static final String PLACEMENT_TYPE = "In Post";
 
   private ActionService service;
@@ -81,7 +83,7 @@ class ActionServiceTest {
   @ParameterizedTest
   @EnumSource(value = Operation.class, names = {"CREATE"}, mode = EXCLUDE)
   void shouldNotInsertActionWhenProgrammeMembershipOperationNotSupported(Operation operation) {
-    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, TOMORROW);
+    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, FUTURE);
 
     service.updateActions(operation, dto);
 
@@ -89,8 +91,8 @@ class ActionServiceTest {
   }
 
   @Test
-  void shouldInsertDataReviewActionOnProgrammeMembershipCreate() {
-    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, TOMORROW);
+  void shouldInsertReviewDataActionOnProgrammeMembershipCreate() {
+    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, FUTURE);
 
     when(repository.insert(anyIterable())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -102,7 +104,8 @@ class ActionServiceTest {
     assertThat("Unexpected action id.", action.id(), nullValue());
     assertThat("Unexpected action type.", action.type(), is(REVIEW_DATA.toString()));
     assertThat("Unexpected trainee id.", action.traineeId(), is(TRAINEE_ID));
-    assertThat("Unexpected due date.", action.due(), is(TOMORROW));
+    assertThat("Unexpected available from date.", action.availableFrom(), is(NOW));
+    assertThat("Unexpected due by date.", action.dueBy(), is(FUTURE));
     assertThat("Unexpected completed date.", action.completed(), nullValue());
 
     TisReferenceInfo tisReference = action.tisReferenceInfo();
@@ -112,7 +115,7 @@ class ActionServiceTest {
 
   @Test
   void shouldReturnEmptyWhenTraineeActionsNotFound() {
-    when(repository.findAllByTraineeIdAndCompletedIsNullOrderByDueAsc(TRAINEE_ID)).thenReturn(
+    when(repository.findAllByTraineeIdAndCompletedIsNullOrderByDueByAsc(TRAINEE_ID)).thenReturn(
         List.of());
 
     List<ActionDto> dtos = service.findIncompleteTraineeActions(TRAINEE_ID);
@@ -120,18 +123,19 @@ class ActionServiceTest {
     assertThat("Unexpected action count.", dtos.size(), is(0));
   }
 
-  @Test
-  void shouldReturnActionsWhenTraineeActionsFound() {
-    TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
+  @ParameterizedTest
+  @EnumSource(TisReferenceType.class)
+  void shouldReturnActionsWhenTraineeActionsFound(TisReferenceType tisType) {
+    TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, tisType);
     ObjectId objectId1 = ObjectId.get();
-    Action action1 = new Action(objectId1, REVIEW_DATA, TRAINEE_ID, tisReference, TOMORROW,
+    Action action1 = new Action(objectId1, REVIEW_DATA, TRAINEE_ID, tisReference, PAST, FUTURE,
         null);
     ObjectId objectId2 = ObjectId.get();
-    Action action2 = new Action(objectId2, REVIEW_DATA, TRAINEE_ID, tisReference, TOMORROW,
+    Action action2 = new Action(objectId2, REVIEW_DATA, TRAINEE_ID, tisReference, PAST, FUTURE,
         null);
     List<Action> actions = List.of(action1, action2);
 
-    when(repository.findAllByTraineeIdAndCompletedIsNullOrderByDueAsc(TRAINEE_ID)).thenReturn(
+    when(repository.findAllByTraineeIdAndCompletedIsNullOrderByDueByAsc(TRAINEE_ID)).thenReturn(
         actions);
 
     List<ActionDto> dtos = service.findIncompleteTraineeActions(TRAINEE_ID);
@@ -145,12 +149,13 @@ class ActionServiceTest {
     dtos.forEach(actDto -> {
       assertThat("Unexpected action type.", actDto.type(), is(REVIEW_DATA.toString()));
       assertThat("Unexpected trainee id.", actDto.traineeId(), is(TRAINEE_ID));
-      assertThat("Unexpected due date.", actDto.due(), is(TOMORROW));
+      assertThat("Unexpected available from date.", actDto.availableFrom(), is(PAST));
+      assertThat("Unexpected due by date.", actDto.dueBy(), is(FUTURE));
       assertThat("Unexpected completed date.", actDto.completed(), nullValue());
 
       TisReferenceInfo refInfo = actDto.tisReferenceInfo();
       assertThat("Unexpected TIS id.", refInfo.id(), is(TIS_ID));
-      assertThat("Unexpected TIS type.", refInfo.type(), is(PROGRAMME_MEMBERSHIP));
+      assertThat("Unexpected TIS type.", refInfo.type(), is(tisType));
     });
   }
 
@@ -172,10 +177,11 @@ class ActionServiceTest {
     verify(repository, never()).save(any());
   }
 
-  @Test
-  void shouldNotCompleteActionWhenActionAlreadyCompleted() {
-    TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
-    Action action = new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, tisReference, TOMORROW,
+  @ParameterizedTest
+  @EnumSource(TisReferenceType.class)
+  void shouldNotCompleteActionWhenActionAlreadyCompleted(TisReferenceType tisType) {
+    TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, tisType);
+    Action action = new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, tisReference, PAST, FUTURE,
         Instant.now());
     when(repository.findByIdAndTraineeId(ACTION_ID, TRAINEE_ID)).thenReturn(Optional.of(action));
 
@@ -185,10 +191,12 @@ class ActionServiceTest {
     verify(repository, never()).save(any());
   }
 
-  @Test
-  void shouldSaveCompletedActionWhenActionCompletableAndTraineeMatches() {
-    TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
-    Action action = new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, tisReference, TOMORROW, null);
+  @ParameterizedTest
+  @EnumSource(TisReferenceType.class)
+  void shouldSaveCompletedActionWhenActionCompletableAndTraineeMatches(TisReferenceType tisType) {
+    TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, tisType);
+    Action action = new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, tisReference, PAST, FUTURE,
+        null);
     when(repository.findByIdAndTraineeId(ACTION_ID, TRAINEE_ID)).thenReturn(Optional.of(action));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -201,19 +209,22 @@ class ActionServiceTest {
     assertThat("Unexpected action id.", completedAction.id(), is(ACTION_ID));
     assertThat("Unexpected action type.", completedAction.type(), is(REVIEW_DATA));
     assertThat("Unexpected trainee id.", completedAction.traineeId(), is(TRAINEE_ID));
-    assertThat("Unexpected due date.", completedAction.due(), is(TOMORROW));
+    assertThat("Unexpected available from date.", completedAction.availableFrom(), is(PAST));
+    assertThat("Unexpected due by date.", completedAction.dueBy(), is(FUTURE));
     assertThat("Unexpected completed date.", completedAction.completed(),
         instanceOf(Instant.class));
 
     TisReferenceInfo refInfo = completedAction.tisReferenceInfo();
     assertThat("Unexpected TIS id.", refInfo.id(), is(TIS_ID));
-    assertThat("Unexpected TIS type.", refInfo.type(), is(PROGRAMME_MEMBERSHIP));
+    assertThat("Unexpected TIS type.", refInfo.type(), is(tisType));
   }
 
-  @Test
-  void shouldReturnCompletedActionWhenActionCompletableAndTraineeMatches() {
-    TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
-    Action action = new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, tisReference, TOMORROW, null);
+  @ParameterizedTest
+  @EnumSource(TisReferenceType.class)
+  void shouldReturnCompletedActionWhenActionCompletableAndTraineeMatches(TisReferenceType tisType) {
+    TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, tisType);
+    Action action = new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, tisReference, PAST, FUTURE,
+        null);
     when(repository.findByIdAndTraineeId(ACTION_ID, TRAINEE_ID)).thenReturn(Optional.of(action));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -225,18 +236,19 @@ class ActionServiceTest {
     assertThat("Unexpected action id.", actionDto.id(), is(ACTION_ID.toString()));
     assertThat("Unexpected action type.", actionDto.type(), is(REVIEW_DATA.toString()));
     assertThat("Unexpected trainee id.", actionDto.traineeId(), is(TRAINEE_ID));
-    assertThat("Unexpected due date.", actionDto.due(), is(TOMORROW));
+    assertThat("Unexpected available from date.", actionDto.availableFrom(), is(PAST));
+    assertThat("Unexpected due by date.", actionDto.dueBy(), is(FUTURE));
     assertThat("Unexpected completed date.", actionDto.completed(), instanceOf(Instant.class));
 
     TisReferenceInfo refInfo = actionDto.tisReferenceInfo();
     assertThat("Unexpected TIS id.", refInfo.id(), is(TIS_ID));
-    assertThat("Unexpected TIS type.", refInfo.type(), is(PROGRAMME_MEMBERSHIP));
+    assertThat("Unexpected TIS type.", refInfo.type(), is(tisType));
   }
 
   @ParameterizedTest
   @EnumSource(value = Operation.class, names = {"CREATE"}, mode = EXCLUDE)
   void shouldNotInsertActionWhenPlacementOperationNotSupported(Operation operation) {
-    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, TOMORROW, PLACEMENT_TYPE);
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, PLACEMENT_TYPE);
 
     service.updateActions(operation, dto);
 
@@ -245,7 +257,7 @@ class ActionServiceTest {
 
   @Test
   void shouldNotInsertActionWhenPlacementTypeIgnored() {
-    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, TOMORROW, "ignored placement type");
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, "ignored placement type");
 
     service.updateActions(Operation.CREATE, dto);
 
@@ -254,8 +266,8 @@ class ActionServiceTest {
 
   @ParameterizedTest
   @MethodSource("listPlacementTypes")
-  void shouldInsertDataReviewActionOnPlacementCreate(String placementType) {
-    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, TOMORROW, placementType);
+  void shouldInsertReviewDataActionOnPlacementCreate(String placementType) {
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, placementType);
 
     when(repository.insert(anyIterable())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -267,7 +279,9 @@ class ActionServiceTest {
     assertThat("Unexpected action id.", action.id(), nullValue());
     assertThat("Unexpected action type.", action.type(), is(REVIEW_DATA.toString()));
     assertThat("Unexpected trainee id.", action.traineeId(), is(TRAINEE_ID));
-    assertThat("Unexpected due date.", action.due(), is(TOMORROW.minusWeeks(12)));
+    assertThat("Unexpected available from date.", action.availableFrom(),
+        is(FUTURE.minusWeeks(12)));
+    assertThat("Unexpected due by date.", action.dueBy(), is(FUTURE));
     assertThat("Unexpected completed date.", action.completed(), nullValue());
 
     TisReferenceInfo tisReference = action.tisReferenceInfo();
