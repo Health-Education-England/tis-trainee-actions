@@ -61,18 +61,42 @@ public class ActionService {
    *
    * @param operation The operation that triggered the update.
    * @param dto       The Placement data associated with the operation.
-   * @return A list of updated actions, empty if no actions required.
+   * @return A list of new actions, empty if no new actions added.
    */
   public List<ActionDto> updateActions(Operation operation, PlacementDto dto) {
+    boolean deleteAction = false;
     List<Action> actions = new ArrayList<>();
 
-    if (Objects.equals(operation, Operation.CREATE)) {
+    Action action = mapper.toAction(dto, REVIEW_DATA);
+
+    if (Objects.equals(operation, Operation.LOAD) || Objects.equals(operation, Operation.UPDATE)) {
       if (PLACEMENT_TYPES_TO_ACT_ON.stream().anyMatch(dto.placementType()::equalsIgnoreCase)) {
-        Action action = mapper.toAction(dto, REVIEW_DATA);
-        actions.add(action);
+        //find if action already exists - if so, leave it as-is
+        List<Action> existingActions = repository.findByTraineeIdAndTisReferenceInfo(
+            action.traineeId(), action.tisReferenceInfo().id(),
+            action.tisReferenceInfo().type().toString());
+        if (existingActions.isEmpty()) {
+          actions.add(action);
+        } else {
+          log.info("Placement {} already has {} action(s), these are left as-is", dto.id(),
+              existingActions.size());
+        }
       } else {
         log.info("Placement {} of type {} is ignored", dto.id(), dto.placementType());
+        deleteAction = true;
       }
+    } else if (Objects.equals(operation, Operation.DELETE)) {
+      log.info("Placement {} is deleted", dto.id());
+      deleteAction = true;
+    }
+
+    if (deleteAction) {
+      //remove any pre-existing saved action(s)
+      Long deletedActions = repository.deleteByTraineeIdAndTisReferenceInfo(action.traineeId(),
+          action.tisReferenceInfo().id(),
+          action.tisReferenceInfo().type().toString());
+      log.info("{} obsolete action(s) deleted for placement {}", deletedActions, dto.id());
+      //TODO: what if action has already been completed?
     }
 
     if (actions.isEmpty()) {

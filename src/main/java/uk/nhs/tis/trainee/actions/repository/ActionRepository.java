@@ -24,9 +24,12 @@ package uk.nhs.tis.trainee.actions.repository;
 import java.util.List;
 import java.util.Optional;
 import org.bson.types.ObjectId;
+import org.springframework.data.mongodb.repository.DeleteQuery;
 import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 import uk.nhs.tis.trainee.actions.model.Action;
+import uk.nhs.tis.trainee.actions.model.Action.TisReferenceInfo;
 
 /**
  * A repository of trainee actions.
@@ -50,4 +53,28 @@ public interface ActionRepository extends MongoRepository<Action, ObjectId> {
    * @return The found trainee action, or empty if not found.
    */
   Optional<Action> findByIdAndTraineeId(ObjectId id, String traineeId);
+
+  /**
+   * Delete specific TIS entity action(s) for a trainee.
+   *
+   * @param traineeId The trainee ID.
+   * @param tisId     The TIS ID of the entity.
+   * @param type      The entity type.
+   */
+  @DeleteQuery(value = "{$and : [{'traineeId': ?0}, "
+      + "{'tisReferenceInfo.id': ?1}, "
+      + "{'tisReferenceInfo.type': ?2}]}")
+  Long deleteByTraineeIdAndTisReferenceInfo(String traineeId, String tisId, String type);
+
+  /**
+   * Find specific TIS entity action(s) for a trainee.
+   *
+   * @param traineeId The trainee ID.
+   * @param tisId     The TIS ID of the entity.
+   * @param type      The entity type.
+   */
+  @Query(value = "{$and : [{'traineeId': ?0}, "
+      + "{'tisReferenceInfo.id': ?1}, "
+      + "{'tisReferenceInfo.type': ?2}]}")
+  List<Action> findByTraineeIdAndTisReferenceInfo(String traineeId, String tisId, String type);
 }
