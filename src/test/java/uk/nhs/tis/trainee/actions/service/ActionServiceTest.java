@@ -259,7 +259,7 @@ class ActionServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = Operation.class, names = {"LOAD", "UPDATE",})
+  @EnumSource(value = Operation.class, names = {"LOAD", "UPDATE"})
   void shouldInsertActionWhenPlacementOperationSupported(Operation operation) {
     PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, PLACEMENT_TYPE);
 

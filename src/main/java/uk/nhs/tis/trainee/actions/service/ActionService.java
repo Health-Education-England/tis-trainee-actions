@@ -96,7 +96,7 @@ public class ActionService {
           action.tisReferenceInfo().id(),
           action.tisReferenceInfo().type().toString());
       log.info("{} obsolete action(s) deleted for placement {}", deletedActions, dto.id());
-      //TODO: what if action has already been completed?
+      //deletes even if the action has already been completed
     }
 
     if (actions.isEmpty()) {
