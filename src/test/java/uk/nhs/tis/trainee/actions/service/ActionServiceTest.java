@@ -28,6 +28,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyIterable;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -255,6 +256,20 @@ class ActionServiceTest {
     service.updateActions(operation, dto);
 
     verifyNoInteractions(repository);
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = Operation.class, names = {"LOAD", "UPDATE",})
+  void shouldInsertActionWhenPlacementOperationSupported(Operation operation) {
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, PLACEMENT_TYPE);
+
+    when(repository.findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
+        String.valueOf(PLACEMENT))).thenReturn(Collections.emptyList());
+
+    service.updateActions(operation, dto);
+
+    verify(repository).findByTraineeIdAndTisReferenceInfo(any(), any(), any());
+    verify(repository).insert(anyList());
   }
 
   @Test

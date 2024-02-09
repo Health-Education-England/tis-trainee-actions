@@ -29,7 +29,6 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 import uk.nhs.tis.trainee.actions.model.Action;
-import uk.nhs.tis.trainee.actions.model.Action.TisReferenceInfo;
 
 /**
  * A repository of trainee actions.
