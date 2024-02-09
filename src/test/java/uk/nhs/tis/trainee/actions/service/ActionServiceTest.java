@@ -32,6 +32,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.actions.model.ActionType.REVIEW_DATA;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PLACEMENT;
@@ -40,6 +41,7 @@ import static uk.nhs.tis.trainee.actions.service.ActionService.PLACEMENT_TYPES_T
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -246,7 +248,7 @@ class ActionServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = Operation.class, names = {"CREATE"}, mode = EXCLUDE)
+  @EnumSource(value = Operation.class, names = {"LOAD", "UPDATE", "DELETE"}, mode = EXCLUDE)
   void shouldNotInsertActionWhenPlacementOperationNotSupported(Operation operation) {
     PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, PLACEMENT_TYPE);
 
@@ -256,12 +258,39 @@ class ActionServiceTest {
   }
 
   @Test
-  void shouldNotInsertActionWhenPlacementTypeIgnored() {
+  void shouldNotInsertActionAndDeleteAnyExistingActionsWhenPlacementTypeIgnored() {
     PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, "ignored placement type");
 
-    service.updateActions(Operation.CREATE, dto);
+    service.updateActions(Operation.LOAD, dto);
+    verify(repository).deleteByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
+        String.valueOf(PLACEMENT));
+    verifyNoMoreInteractions(repository);
+  }
 
-    verifyNoInteractions(repository);
+  @Test
+  void shouldDeleteAnyExistingActionsWhenPlacementOperationIsDelete() {
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, PLACEMENT_TYPE);
+
+    service.updateActions(Operation.DELETE, dto);
+    verify(repository).deleteByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
+        String.valueOf(PLACEMENT));
+    verifyNoMoreInteractions(repository);
+  }
+
+  @Test
+  void shouldNotCreatePlacementActionIfOneAlreadyExists() {
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, PLACEMENT_TYPE);
+    Action existingAction =
+        new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, new TisReferenceInfo(TIS_ID, PLACEMENT),
+            PAST, FUTURE, null);
+    when(repository.findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
+            String.valueOf(PLACEMENT))).thenReturn(List.of(existingAction));
+
+    List<ActionDto> actions = service.updateActions(Operation.LOAD, dto);
+
+    assertThat("Unexpected action count.", actions.size(), is(0));
+    verify(repository).findByTraineeIdAndTisReferenceInfo(any(), any(), any());
+    verifyNoMoreInteractions(repository);
   }
 
   @ParameterizedTest
@@ -271,7 +300,10 @@ class ActionServiceTest {
 
     when(repository.insert(anyIterable())).thenAnswer(inv -> inv.getArgument(0));
 
-    List<ActionDto> actions = service.updateActions(Operation.CREATE, dto);
+    when(repository.findByTraineeIdAndTisReferenceInfo(any(), any(), any()))
+        .thenReturn(Collections.emptyList());
+
+    List<ActionDto> actions = service.updateActions(Operation.LOAD, dto);
 
     assertThat("Unexpected action count.", actions.size(), is(1));
 
