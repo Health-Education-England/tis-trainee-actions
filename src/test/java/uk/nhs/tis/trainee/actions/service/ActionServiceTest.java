@@ -273,27 +273,27 @@ class ActionServiceTest {
   }
 
   @Test
-  void shouldNotInsertActionAndDeleteAnyExistingActionsWhenPlacementTypeIgnored() {
+  void shouldNotInsertActionAndDeleteAnyExistingNotCompleteActionsWhenPlacementTypeIgnored() {
     PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, "ignored placement type");
 
     service.updateActions(Operation.LOAD, dto);
-    verify(repository).deleteByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
+    verify(repository).deleteByTraineeIdAndTisReferenceInfoAndNotComplete(TRAINEE_ID, TIS_ID,
         String.valueOf(PLACEMENT));
     verifyNoMoreInteractions(repository);
   }
 
   @Test
-  void shouldDeleteAnyExistingActionsWhenPlacementOperationIsDelete() {
+  void shouldDeleteAnyExistingNotCompleteActionsWhenPlacementOperationIsDelete() {
     PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, PLACEMENT_TYPE);
 
     service.updateActions(Operation.DELETE, dto);
-    verify(repository).deleteByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
+    verify(repository).deleteByTraineeIdAndTisReferenceInfoAndNotComplete(TRAINEE_ID, TIS_ID,
         String.valueOf(PLACEMENT));
     verifyNoMoreInteractions(repository);
   }
 
   @Test
-  void shouldNotCreatePlacementActionIfOneAlreadyExists() {
+  void shouldNotCreatePlacementActionIfOneAlreadyExistsWithSameDueDate() {
     PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, PLACEMENT_TYPE);
     Action existingAction =
         new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, new TisReferenceInfo(TIS_ID, PLACEMENT),
@@ -305,6 +305,29 @@ class ActionServiceTest {
 
     assertThat("Unexpected action count.", actions.size(), is(0));
     verify(repository).findByTraineeIdAndTisReferenceInfo(any(), any(), any());
+    verifyNoMoreInteractions(repository);
+  }
+
+  @Test
+  void shouldReplacePlacementActionIfOneAlreadyExistsWithDifferentDueDate() {
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, PLACEMENT_TYPE);
+    Action existingAction =
+        new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, new TisReferenceInfo(TIS_ID, PLACEMENT),
+            PAST, FUTURE.minusDays(1), Instant.now());
+
+    when(repository.insert(anyIterable())).thenAnswer(inv -> inv.getArgument(0));
+
+    when(repository.findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
+        String.valueOf(PLACEMENT))).thenReturn(List.of(existingAction));
+
+    List<ActionDto> actions = service.updateActions(Operation.LOAD, dto);
+
+    assertThat("Unexpected action count.", actions.size(), is(1));
+    verify(repository).findByTraineeIdAndTisReferenceInfo(
+        TRAINEE_ID, TIS_ID, PLACEMENT.toString());
+    verify(repository).deleteByTraineeIdAndTisReferenceInfo(
+        TRAINEE_ID, TIS_ID, PLACEMENT.toString());
+    verify(repository).insert(anyList());
     verifyNoMoreInteractions(repository);
   }
 

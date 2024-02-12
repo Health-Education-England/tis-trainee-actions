@@ -26,13 +26,18 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static uk.nhs.tis.trainee.actions.model.ActionType.REVIEW_DATA;
+import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.data.mongo.DataMongoTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -113,5 +118,46 @@ class ActionRepositoryIntegrationTest {
     List<Action> actions = repository.findAll();
     assertThat("Unexpected action count.", actions.size(), is(2));
     assertThat("Unexpected actions.", actions, hasItems(insertedAction1, insertedAction2));
+  }
+
+  @Test
+  void shouldNotDeleteCompleteActionsWhenDeleting() {
+    TisReferenceInfo referenceInfo1 = new TisReferenceInfo(TIS_ID, PLACEMENT);
+    Action action1 = new Action(null, REVIEW_DATA, TRAINEE_ID_1, referenceInfo1, PAST, FUTURE,
+        Instant.now());
+
+    repository.insert(action1);
+
+    Long deletedCount = repository.deleteByTraineeIdAndTisReferenceInfoAndNotComplete(
+        TRAINEE_ID_1, TIS_ID, PLACEMENT.toString());
+    assertThat("Unexpected delete count.", deletedCount, is(0L));
+  }
+
+  @Test
+  void shouldDeleteNotCompleteActionsWhenDeleting() {
+    TisReferenceInfo referenceInfo1 = new TisReferenceInfo(TIS_ID, PLACEMENT);
+    Action action1 = new Action(null, REVIEW_DATA, TRAINEE_ID_1, referenceInfo1, PAST, FUTURE,
+        null);
+
+    repository.insert(action1);
+
+    Long deletedCount = repository.deleteByTraineeIdAndTisReferenceInfoAndNotComplete(
+        TRAINEE_ID_1, TIS_ID, PLACEMENT.toString());
+    assertThat("Unexpected delete count.", deletedCount, is(1L));
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(strings = {"2024-02-02T00:00:00.000Z"})
+  void shouldDeleteAllActionsWhenDeleting(Instant completed) {
+    TisReferenceInfo referenceInfo1 = new TisReferenceInfo(TIS_ID, PLACEMENT);
+    Action action1 = new Action(null, REVIEW_DATA, TRAINEE_ID_1, referenceInfo1, PAST, FUTURE,
+        completed);
+
+    repository.insert(action1);
+
+    Long noDeleted = repository.deleteByTraineeIdAndTisReferenceInfo(
+        TRAINEE_ID_1, TIS_ID, PLACEMENT.toString());
+    assertThat("Unexpected delete count.", noDeleted, is(1L));
   }
 }

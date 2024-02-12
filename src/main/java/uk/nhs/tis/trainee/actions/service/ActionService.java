@@ -71,15 +71,28 @@ public class ActionService {
 
     if (Objects.equals(operation, Operation.LOAD) || Objects.equals(operation, Operation.UPDATE)) {
       if (PLACEMENT_TYPES_TO_ACT_ON.stream().anyMatch(dto.placementType()::equalsIgnoreCase)) {
-        //find if action already exists - if so, leave it as-is
+        //find if action already exists (there should only be at most one)
         List<Action> existingActions = repository.findByTraineeIdAndTisReferenceInfo(
             action.traineeId(), action.tisReferenceInfo().id(),
             action.tisReferenceInfo().type().toString());
         if (existingActions.isEmpty()) {
           actions.add(action);
         } else {
-          log.info("Placement {} already has {} action(s), these are left as-is", dto.id(),
-              existingActions.size());
+          Optional<Action> actionWithDifferentDueDate = existingActions.stream()
+              .filter(a -> !a.dueBy().isEqual(action.dueBy()))
+              .findAny();
+          if (actionWithDifferentDueDate.isPresent()) {
+            //the saved action has a different placement start date, so replace it
+            repository.deleteByTraineeIdAndTisReferenceInfo(action.traineeId(),
+                action.tisReferenceInfo().id(), action.tisReferenceInfo().type().toString());
+            actions.add(action);
+            log.info("Placement {} already has {} action(s), these are replaced and set to "
+                    + "not completed as placement start date has changed from {} to {}", dto.id(),
+                existingActions.size(), actionWithDifferentDueDate.get().dueBy(), action.dueBy());
+          } else {
+            log.info("Placement {} already has {} action(s), these are left as-is", dto.id(),
+                existingActions.size());
+          }
         }
       } else {
         log.info("Placement {} of type {} is ignored", dto.id(), dto.placementType());
@@ -91,12 +104,13 @@ public class ActionService {
     }
 
     if (deleteAction) {
-      //remove any pre-existing saved action(s)
-      Long deletedActions = repository.deleteByTraineeIdAndTisReferenceInfo(action.traineeId(),
+      //remove any pre-existing saved action(s) that have not been completed
+      Long deletedActions = repository.deleteByTraineeIdAndTisReferenceInfoAndNotComplete(
+          action.traineeId(),
           action.tisReferenceInfo().id(),
           action.tisReferenceInfo().type().toString());
-      log.info("{} obsolete action(s) deleted for placement {}", deletedActions, dto.id());
-      //deletes even if the action has already been completed
+      log.info("{} obsolete not completed action(s) deleted for placement {}",
+          deletedActions, dto.id());
     }
 
     if (actions.isEmpty()) {
