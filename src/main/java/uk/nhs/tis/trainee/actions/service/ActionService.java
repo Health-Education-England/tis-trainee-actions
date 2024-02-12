@@ -113,42 +113,6 @@ public class ActionService {
   }
 
   /**
-   * Determine if an operation means an update for a placement record.
-   *
-   * @param operation The operation.
-   * @return True if it means an update for a placement, otherwise false.
-   */
-  private boolean isPlacementOperationAnUpdate(Operation operation) {
-    return Objects.equals(operation, Operation.LOAD) || Objects.equals(operation, Operation.UPDATE);
-  }
-
-  /**
-   * Determine whether a placement update means that its existing actions should be replaced.
-   *
-   * @param existingActions The list of existing action for the placement.
-   * @param action          The updated placement action.
-   * @param placementId     The placement Id.
-   * @return True if the actions should be replaced, otherwise false.
-   */
-  private boolean replaceUpdatedPlacementAction(List<Action> existingActions, Action action,
-      String placementId) {
-    Optional<Action> actionWithDifferentDueDate = existingActions.stream()
-        .filter(a -> !a.dueBy().isEqual(action.dueBy()))
-        .findAny();
-    if (actionWithDifferentDueDate.isPresent()) {
-      //the saved action has a different placement start date, so replace it
-      log.info("Placement {} already has {} action(s), these are replaced and set to "
-              + "not completed as placement start date has changed from {} to {}", placementId,
-          existingActions.size(), actionWithDifferentDueDate.get().dueBy(), action.dueBy());
-      return true;
-    } else {
-      log.info("Placement {} already has {} action(s), these are left as-is", placementId,
-          existingActions.size());
-    }
-    return false;
-  }
-
-  /**
    * Updates the actions associated with the given Operation and Programme Membership data.
    *
    * @param operation The operation that triggered the update.
@@ -216,5 +180,41 @@ public class ActionService {
     completedAction = repository.save(completedAction);
     log.info("Action {} marked as completed at {}.", actionId, completedAction.completed());
     return Optional.of(mapper.toDto(completedAction));
+  }
+
+  /**
+   * Determine if an operation means an update for a placement record.
+   *
+   * @param operation The operation.
+   * @return True if it means an update for a placement, otherwise false.
+   */
+  private boolean isPlacementOperationAnUpdate(Operation operation) {
+    return Objects.equals(operation, Operation.LOAD) || Objects.equals(operation, Operation.UPDATE);
+  }
+
+  /**
+   * Determine whether a placement update means that its existing actions should be replaced.
+   *
+   * @param existingActions The list of existing action for the placement.
+   * @param action          The updated placement action.
+   * @param placementId     The placement Id.
+   * @return True if the actions should be replaced, otherwise false.
+   */
+  private boolean replaceUpdatedPlacementAction(List<Action> existingActions, Action action,
+      String placementId) {
+    Optional<Action> actionWithDifferentDueDate = existingActions.stream()
+        .filter(a -> !a.dueBy().isEqual(action.dueBy()))
+        .findAny();
+    if (actionWithDifferentDueDate.isPresent()) {
+      //the saved action has a different placement start date, so replace it
+      log.info("Placement {} already has {} action(s), these are replaced and set to "
+              + "not completed as placement start date has changed from {} to {}", placementId,
+          existingActions.size(), actionWithDifferentDueDate.get().dueBy(), action.dueBy());
+      return true;
+    } else {
+      log.info("Placement {} already has {} action(s), these are left as-is", placementId,
+          existingActions.size());
+    }
+    return false;
   }
 }
