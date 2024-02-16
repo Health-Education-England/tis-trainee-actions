@@ -61,18 +61,46 @@ public class ActionService {
    *
    * @param operation The operation that triggered the update.
    * @param dto       The Placement data associated with the operation.
-   * @return A list of updated actions, empty if no actions required.
+   * @return A list of new actions, empty if no new actions added.
    */
   public List<ActionDto> updateActions(Operation operation, PlacementDto dto) {
+    boolean deleteAction = false;
     List<Action> actions = new ArrayList<>();
 
-    if (Objects.equals(operation, Operation.CREATE)) {
+    Action action = mapper.toAction(dto, REVIEW_DATA);
+
+    if (isPlacementOperationAnUpdate(operation)) {
       if (PLACEMENT_TYPES_TO_ACT_ON.stream().anyMatch(dto.placementType()::equalsIgnoreCase)) {
-        Action action = mapper.toAction(dto, REVIEW_DATA);
-        actions.add(action);
+        //find if action already exists (there should only be at most one)
+        List<Action> existingActions = repository.findByTraineeIdAndTisReferenceInfo(
+            action.traineeId(), action.tisReferenceInfo().id(),
+            action.tisReferenceInfo().type().toString());
+        if (existingActions.isEmpty()) {
+          actions.add(action);
+        } else {
+          if (replaceUpdatedPlacementAction(existingActions, action, dto.id())) {
+            repository.deleteByTraineeIdAndTisReferenceInfo(action.traineeId(),
+                action.tisReferenceInfo().id(), action.tisReferenceInfo().type().toString());
+            actions.add(action);
+          }
+        }
       } else {
         log.info("Placement {} of type {} is ignored", dto.id(), dto.placementType());
+        deleteAction = true;
       }
+    } else if (Objects.equals(operation, Operation.DELETE)) {
+      log.info("Placement {} is deleted", dto.id());
+      deleteAction = true;
+    }
+
+    if (deleteAction) {
+      //remove any pre-existing saved action(s) that have not been completed
+      Long deletedActions = repository.deleteByTraineeIdAndTisReferenceInfoAndNotComplete(
+          action.traineeId(),
+          action.tisReferenceInfo().id(),
+          action.tisReferenceInfo().type().toString());
+      log.info("{} obsolete not completed action(s) deleted for placement {}",
+          deletedActions, dto.id());
     }
 
     if (actions.isEmpty()) {
@@ -152,5 +180,41 @@ public class ActionService {
     completedAction = repository.save(completedAction);
     log.info("Action {} marked as completed at {}.", actionId, completedAction.completed());
     return Optional.of(mapper.toDto(completedAction));
+  }
+
+  /**
+   * Determine if an operation means an update for a placement record.
+   *
+   * @param operation The operation.
+   * @return True if it means an update for a placement, otherwise false.
+   */
+  private boolean isPlacementOperationAnUpdate(Operation operation) {
+    return Objects.equals(operation, Operation.LOAD) || Objects.equals(operation, Operation.UPDATE);
+  }
+
+  /**
+   * Determine whether a placement update means that its existing actions should be replaced.
+   *
+   * @param existingActions The list of existing action for the placement.
+   * @param action          The updated placement action.
+   * @param placementId     The placement Id.
+   * @return True if the actions should be replaced, otherwise false.
+   */
+  private boolean replaceUpdatedPlacementAction(List<Action> existingActions, Action action,
+      String placementId) {
+    Optional<Action> actionWithDifferentDueDate = existingActions.stream()
+        .filter(a -> !a.dueBy().isEqual(action.dueBy()))
+        .findAny();
+    if (actionWithDifferentDueDate.isPresent()) {
+      //the saved action has a different placement start date, so replace it
+      log.info("Placement {} already has {} action(s), these are replaced and set to "
+              + "not completed as placement start date has changed from {} to {}", placementId,
+          existingActions.size(), actionWithDifferentDueDate.get().dueBy(), action.dueBy());
+      return true;
+    } else {
+      log.info("Placement {} already has {} action(s), these are left as-is", placementId,
+          existingActions.size());
+    }
+    return false;
   }
 }

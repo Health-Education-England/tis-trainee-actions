@@ -28,6 +28,7 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.testcontainers.containers.localstack.LocalStackContainer.Service.SQS;
 import static uk.nhs.tis.trainee.actions.event.Operation.CREATE;
+import static uk.nhs.tis.trainee.actions.event.Operation.LOAD;
 import static uk.nhs.tis.trainee.actions.model.ActionType.REVIEW_DATA;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PLACEMENT;
 
@@ -123,7 +124,7 @@ class PlacementListenerIntegrationTest {
             },
             "operation": "%s"
           }
-        }""".formatted(PLACEMENT_ID, traineeId, START_DATE, CREATE);
+        }""".formatted(PLACEMENT_ID, traineeId, START_DATE, LOAD);
 
     JsonNode eventJson = JsonMapper.builder()
         .build()
