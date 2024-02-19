@@ -29,6 +29,7 @@ import java.util.Objects;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import uk.nhs.tis.trainee.actions.dto.ActionDto;
 import uk.nhs.tis.trainee.actions.dto.PlacementDto;
@@ -109,7 +110,7 @@ public class ActionService {
     }
 
     log.info("Adding {} new action(s) for Placement {}.", actions.size(), dto.id());
-    return mapper.toDtos(repository.insert(actions));
+    return saveActionsIfNotAlreadySaved(actions);
   }
 
   /**
@@ -133,7 +134,24 @@ public class ActionService {
     }
 
     log.info("Adding {} new action(s) for Programme Membership {}.", actions.size(), dto.id());
-    return mapper.toDtos(repository.insert(actions));
+    return saveActionsIfNotAlreadySaved(actions);
+  }
+
+  /**
+   * Save actions to repository. If the actions have already been saved (e.g. on a separate thread),
+   * handle the duplicate key exception.
+   *
+   * @param actions The list of actions to save.
+   * @return The list of saved actions, or an empty list if the save failed.
+   */
+  private List<ActionDto> saveActionsIfNotAlreadySaved(List<Action> actions) {
+    try {
+      List<Action> savedActions = repository.insert(actions);
+      return mapper.toDtos(savedActions);
+    } catch (DuplicateKeyException e) {
+      log.info("Action(s) already saved on another thread: {}", e.getMessage());
+      return List.of();
+    }
   }
 
   /**

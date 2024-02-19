@@ -25,10 +25,12 @@ import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyIterable;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -54,6 +56,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
+import org.springframework.dao.DuplicateKeyException;
 import uk.nhs.tis.trainee.actions.dto.ActionDto;
 import uk.nhs.tis.trainee.actions.dto.PlacementDto;
 import uk.nhs.tis.trainee.actions.dto.ProgrammeMembershipDto;
@@ -357,6 +360,31 @@ class ActionServiceTest {
     TisReferenceInfo tisReference = action.tisReferenceInfo();
     assertThat("Unexpected TIS id.", tisReference.id(), is(TIS_ID));
     assertThat("Unexpected TIS type.", tisReference.type(), is(PLACEMENT));
+  }
+
+  @Test
+  void shouldNotThrowExceptionOnSaveIfRecordExists() {
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, PLACEMENT_TYPE);
+
+    when(repository.findByTraineeIdAndTisReferenceInfo(any(), any(), any()))
+        .thenReturn(Collections.emptyList());
+
+    doThrow(new DuplicateKeyException("error")).when(repository).insert(anyIterable());
+
+    assertDoesNotThrow(() -> service.updateActions(Operation.LOAD, dto));
+  }
+
+  @Test
+  void shouldReturnEmptyListOnSaveException() {
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, PLACEMENT_TYPE);
+
+    when(repository.findByTraineeIdAndTisReferenceInfo(any(), any(), any()))
+        .thenReturn(Collections.emptyList());
+
+    doThrow(new DuplicateKeyException("error")).when(repository).insert(anyIterable());
+
+    List<ActionDto> savedDtos = service.updateActions(Operation.LOAD, dto);
+    assertThat("Unexpected list size.", savedDtos.size(), is(0));
   }
 
   static Stream<String> listPlacementTypes() {
