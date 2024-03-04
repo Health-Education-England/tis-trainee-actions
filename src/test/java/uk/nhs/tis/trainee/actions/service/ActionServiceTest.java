@@ -250,18 +250,7 @@ class ActionServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = Operation.class, names = {"LOAD", "UPDATE", "INSERT", "DELETE"},
-      mode = EXCLUDE)
-  void shouldNotInsertActionWhenPlacementOperationNotSupported(Operation operation) {
-    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, PLACEMENT_TYPE);
-
-    service.updateActions(operation, dto);
-
-    verifyNoInteractions(repository);
-  }
-
-  @ParameterizedTest
-  @EnumSource(value = Operation.class, names = {"LOAD", "UPDATE", "INSERT"})
+  @EnumSource(value = Operation.class, names = {"LOAD", "UPDATE", "INSERT", "CREATE"})
   void shouldInsertActionWhenPlacementOperationSupported(Operation operation) {
     PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, PLACEMENT_TYPE);
 

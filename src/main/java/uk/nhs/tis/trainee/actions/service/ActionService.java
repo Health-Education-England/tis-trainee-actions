@@ -69,7 +69,7 @@ public class ActionService {
 
     Action action = mapper.toAction(dto, REVIEW_DATA);
 
-    if (isPlacementOperationAnUpdate(operation)) {
+    if (isPlacementOperationAnUpdateOrNew(operation)) {
       if (PLACEMENT_TYPES_TO_ACT_ON.stream().anyMatch(dto.placementType()::equalsIgnoreCase)) {
         //find if action already exists (there should only be at most one)
         List<Action> existingActions = repository.findByTraineeIdAndTisReferenceInfo(
@@ -122,7 +122,7 @@ public class ActionService {
   public List<ActionDto> updateActions(Operation operation, ProgrammeMembershipDto dto) {
     List<Action> actions = new ArrayList<>();
 
-    if (isProgrammeMembershipOperationANewRecord(operation)) {
+    if (isProgrammeMembershipOperationaNewRecord(operation)) {
       Action action = mapper.toAction(dto, REVIEW_DATA);
       actions.add(action);
     }
@@ -188,10 +188,11 @@ public class ActionService {
    * @param operation The operation.
    * @return True if it means an update or new record for a placement, otherwise false.
    */
-  private boolean isPlacementOperationAnUpdate(Operation operation) {
-    return Objects.equals(operation, Operation.LOAD) ||
-        Objects.equals(operation, Operation.UPDATE) ||
-        Objects.equals(operation, Operation.INSERT);
+  private boolean isPlacementOperationAnUpdateOrNew(Operation operation) {
+    return Objects.equals(operation, Operation.LOAD)
+        || Objects.equals(operation, Operation.UPDATE)
+        || Objects.equals(operation, Operation.CREATE)
+        || Objects.equals(operation, Operation.INSERT);
   }
 
   /**
@@ -200,9 +201,9 @@ public class ActionService {
    * @param operation The operation.
    * @return True if it means a new record for a programme membership, otherwise false.
    */
-  private boolean isProgrammeMembershipOperationANewRecord(Operation operation) {
-    return Objects.equals(operation, Operation.CREATE) ||
-        Objects.equals(operation, Operation.INSERT);
+  private boolean isProgrammeMembershipOperationaNewRecord(Operation operation) {
+    return Objects.equals(operation, Operation.CREATE)
+        || Objects.equals(operation, Operation.INSERT);
   }
 
   /**
