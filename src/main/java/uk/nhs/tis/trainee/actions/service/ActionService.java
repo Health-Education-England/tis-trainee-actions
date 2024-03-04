@@ -122,7 +122,7 @@ public class ActionService {
   public List<ActionDto> updateActions(Operation operation, ProgrammeMembershipDto dto) {
     List<Action> actions = new ArrayList<>();
 
-    if (Objects.equals(operation, Operation.CREATE)) {
+    if (isProgrammeMembershipOperationANewRecord(operation)) {
       Action action = mapper.toAction(dto, REVIEW_DATA);
       actions.add(action);
     }
@@ -183,13 +183,26 @@ public class ActionService {
   }
 
   /**
-   * Determine if an operation means an update for a placement record.
+   * Determine if an operation means an update or new record for a placement.
    *
    * @param operation The operation.
-   * @return True if it means an update for a placement, otherwise false.
+   * @return True if it means an update or new record for a placement, otherwise false.
    */
   private boolean isPlacementOperationAnUpdate(Operation operation) {
-    return Objects.equals(operation, Operation.LOAD) || Objects.equals(operation, Operation.UPDATE);
+    return Objects.equals(operation, Operation.LOAD) ||
+        Objects.equals(operation, Operation.UPDATE) ||
+        Objects.equals(operation, Operation.INSERT);
+  }
+
+  /**
+   * Determine if an operation means a new record for a programme membership record.
+   *
+   * @param operation The operation.
+   * @return True if it means a new record for a programme membership, otherwise false.
+   */
+  private boolean isProgrammeMembershipOperationANewRecord(Operation operation) {
+    return Objects.equals(operation, Operation.CREATE) ||
+        Objects.equals(operation, Operation.INSERT);
   }
 
   /**

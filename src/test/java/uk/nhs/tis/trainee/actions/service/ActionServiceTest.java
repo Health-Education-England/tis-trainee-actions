@@ -84,7 +84,7 @@ class ActionServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = Operation.class, names = {"CREATE"}, mode = EXCLUDE)
+  @EnumSource(value = Operation.class, names = {"CREATE", "INSERT"}, mode = EXCLUDE)
   void shouldNotInsertActionWhenProgrammeMembershipOperationNotSupported(Operation operation) {
     ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, FUTURE);
 
@@ -93,13 +93,14 @@ class ActionServiceTest {
     verifyNoInteractions(repository);
   }
 
-  @Test
-  void shouldInsertReviewDataActionOnProgrammeMembershipCreate() {
+  @ParameterizedTest
+  @EnumSource(value = Operation.class, names = {"CREATE", "INSERT"})
+  void shouldInsertReviewDataActionOnProgrammeMembershipCreate(Operation operation) {
     ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, FUTURE);
 
     when(repository.insert(anyIterable())).thenAnswer(inv -> inv.getArgument(0));
 
-    List<ActionDto> actions = service.updateActions(Operation.CREATE, dto);
+    List<ActionDto> actions = service.updateActions(operation, dto);
 
     assertThat("Unexpected action count.", actions.size(), is(1));
 
@@ -249,7 +250,8 @@ class ActionServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = Operation.class, names = {"LOAD", "UPDATE", "DELETE"}, mode = EXCLUDE)
+  @EnumSource(value = Operation.class, names = {"LOAD", "UPDATE", "INSERT", "DELETE"},
+      mode = EXCLUDE)
   void shouldNotInsertActionWhenPlacementOperationNotSupported(Operation operation) {
     PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, PLACEMENT_TYPE);
 
@@ -259,7 +261,7 @@ class ActionServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = Operation.class, names = {"LOAD", "UPDATE"})
+  @EnumSource(value = Operation.class, names = {"LOAD", "UPDATE", "INSERT"})
   void shouldInsertActionWhenPlacementOperationSupported(Operation operation) {
     PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, PLACEMENT_TYPE);
 
