@@ -115,7 +115,6 @@ public class ActionService {
    * @return A list of updated actions, empty if no actions required.
    */
   public List<ActionDto> updateActions(Operation operation, ProgrammeMembershipDto dto) {
-    boolean deleteAction = false;
     List<Action> actions = new ArrayList<>();
 
     Action action = mapper.toAction(dto, REVIEW_DATA);
@@ -132,10 +131,6 @@ public class ActionService {
       }
     } else if (Objects.equals(operation, Operation.DELETE)) {
       log.info("Programme membership {} is deleted", dto.id());
-      deleteAction = true;
-    }
-
-    if (deleteAction) {
       deleteIncompleteActions(action);
     }
 
