@@ -95,13 +95,7 @@ public class ActionService {
     }
 
     if (deleteAction) {
-      //remove any pre-existing saved action(s) that have not been completed
-      Long deletedActions = repository.deleteByTraineeIdAndTisReferenceInfoAndNotComplete(
-          action.traineeId(),
-          action.tisReferenceInfo().id(),
-          action.tisReferenceInfo().type().toString());
-      log.info("{} obsolete not completed action(s) deleted for placement {}",
-          deletedActions, dto.id());
+      deleteIncompleteActions(action);
     }
 
     if (actions.isEmpty()) {
@@ -142,13 +136,7 @@ public class ActionService {
     }
 
     if (deleteAction) {
-      //remove any pre-existing saved action(s) that have not been completed
-      Long deletedActions = repository.deleteByTraineeIdAndTisReferenceInfoAndNotComplete(
-          action.traineeId(),
-          action.tisReferenceInfo().id(),
-          action.tisReferenceInfo().type().toString());
-      log.info("{} obsolete not completed action(s) deleted for programme membership {}",
-          deletedActions, dto.id());
+      deleteIncompleteActions(action);
     }
 
     if (actions.isEmpty()) {
@@ -158,6 +146,21 @@ public class ActionService {
 
     log.info("Adding {} new action(s) for Programme Membership {}.", actions.size(), dto.id());
     return mapper.toDtos(repository.insert(actions));
+  }
+
+  /**
+   * Delete any not-completed actions that match the given action item.
+   *
+   * @param likeAction The action to use to identify candidates for deletion.
+   */
+  private void deleteIncompleteActions(Action likeAction) {
+    //remove any pre-existing saved action(s) that have not been completed
+    Long deletedActions = repository.deleteByTraineeIdAndTisReferenceInfoAndNotComplete(
+        likeAction.traineeId(),
+        likeAction.tisReferenceInfo().id(),
+        likeAction.tisReferenceInfo().type().toString());
+    log.info("{} obsolete not completed action(s) deleted for {} {}",
+        deletedActions, likeAction.tisReferenceInfo().type(), likeAction.tisReferenceInfo().id());
   }
 
   /**
