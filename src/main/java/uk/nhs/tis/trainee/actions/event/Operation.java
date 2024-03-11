@@ -26,5 +26,5 @@ package uk.nhs.tis.trainee.actions.event;
  */
 public enum Operation {
 
-  CREATE, INSERT, DELETE, LOAD, UPDATE
+  DELETE, LOAD
 }

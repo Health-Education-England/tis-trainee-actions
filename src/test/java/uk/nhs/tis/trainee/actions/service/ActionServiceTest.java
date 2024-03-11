@@ -25,7 +25,6 @@ import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyIterable;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -42,6 +41,7 @@ import static uk.nhs.tis.trainee.actions.service.ActionService.PLACEMENT_TYPES_T
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -83,24 +83,16 @@ class ActionServiceTest {
     service = new ActionService(repository, new ActionMapperImpl());
   }
 
-  @ParameterizedTest
-  @EnumSource(value = Operation.class, names = {"CREATE", "INSERT"}, mode = EXCLUDE)
-  void shouldNotInsertActionWhenProgrammeMembershipOperationNotSupported(Operation operation) {
+  @Test
+  void shouldInsertReviewDataActionOnFirstSightOfFutureProgrammeMembership() {
     ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, FUTURE);
 
-    service.updateActions(operation, dto);
-
-    verifyNoInteractions(repository);
-  }
-
-  @ParameterizedTest
-  @EnumSource(value = Operation.class, names = {"CREATE", "INSERT"})
-  void shouldInsertReviewDataActionOnProgrammeMembershipCreate(Operation operation) {
-    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, FUTURE);
+    when(repository.findByTraineeIdAndTisReferenceInfo(any(), any(), any()))
+        .thenReturn(new ArrayList<>());
 
     when(repository.insert(anyIterable())).thenAnswer(inv -> inv.getArgument(0));
 
-    List<ActionDto> actions = service.updateActions(operation, dto);
+    List<ActionDto> actions = service.updateActions(Operation.LOAD, dto);
 
     assertThat("Unexpected action count.", actions.size(), is(1));
 
@@ -115,6 +107,34 @@ class ActionServiceTest {
     TisReferenceInfo tisReference = action.tisReferenceInfo();
     assertThat("Unexpected TIS id.", tisReference.id(), is(TIS_ID));
     assertThat("Unexpected TIS type.", tisReference.type(), is(PROGRAMME_MEMBERSHIP));
+  }
+
+  @Test
+  void shouldNotInsertReviewDataActionOnFirstSightOfPastProgrammeMembership() {
+    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, PAST);
+
+    List<ActionDto> actions = service.updateActions(Operation.LOAD, dto);
+
+    assertThat("Unexpected action count.", actions.size(), is(0));
+    verifyNoInteractions(repository);
+  }
+
+  @Test
+  void shouldNotInsertReviewDataActionOnAlreadyActionedFutureProgrammeMembership() {
+    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, FUTURE);
+
+    TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
+    ObjectId objectId1 = ObjectId.get();
+    Action existingAction = new Action(objectId1, REVIEW_DATA, TRAINEE_ID, tisReference, PAST,
+        FUTURE, null);
+    when(repository.findByTraineeIdAndTisReferenceInfo(any(), any(), any()))
+        .thenReturn(List.of(existingAction));
+
+    List<ActionDto> actions = service.updateActions(Operation.LOAD, dto);
+
+    assertThat("Unexpected action count.", actions.size(), is(0));
+    verify(repository).findByTraineeIdAndTisReferenceInfo(any(), any(), any());
+    verifyNoMoreInteractions(repository);
   }
 
   @Test
@@ -249,15 +269,14 @@ class ActionServiceTest {
     assertThat("Unexpected TIS type.", refInfo.type(), is(tisType));
   }
 
-  @ParameterizedTest
-  @EnumSource(value = Operation.class, names = {"LOAD", "UPDATE", "INSERT", "CREATE"})
-  void shouldInsertActionWhenPlacementOperationSupported(Operation operation) {
+  @Test
+  void shouldInsertActionWhenPlacementOperationLoad() {
     PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, PLACEMENT_TYPE);
 
     when(repository.findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
         String.valueOf(PLACEMENT))).thenReturn(Collections.emptyList());
 
-    service.updateActions(operation, dto);
+    service.updateActions(Operation.LOAD, dto);
 
     verify(repository).findByTraineeIdAndTisReferenceInfo(any(), any(), any());
     verify(repository).insert(anyList());
@@ -280,6 +299,16 @@ class ActionServiceTest {
     service.updateActions(Operation.DELETE, dto);
     verify(repository).deleteByTraineeIdAndTisReferenceInfoAndNotComplete(TRAINEE_ID, TIS_ID,
         String.valueOf(PLACEMENT));
+    verifyNoMoreInteractions(repository);
+  }
+
+  @Test
+  void shouldDeleteAnyExistingNotCompleteActionsWhenProgrammeMembershipOperationIsDelete() {
+    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, FUTURE);
+
+    service.updateActions(Operation.DELETE, dto);
+    verify(repository).deleteByTraineeIdAndTisReferenceInfoAndNotComplete(TRAINEE_ID, TIS_ID,
+        String.valueOf(PROGRAMME_MEMBERSHIP));
     verifyNoMoreInteractions(repository);
   }
 

@@ -23,6 +23,7 @@ package uk.nhs.tis.trainee.actions.service;
 
 import static uk.nhs.tis.trainee.actions.model.ActionType.REVIEW_DATA;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -69,7 +70,7 @@ public class ActionService {
 
     Action action = mapper.toAction(dto, REVIEW_DATA);
 
-    if (isPlacementOperationAnUpdateOrNew(operation)) {
+    if (Objects.equals(operation, Operation.LOAD)) {
       if (PLACEMENT_TYPES_TO_ACT_ON.stream().anyMatch(dto.placementType()::equalsIgnoreCase)) {
         //find if action already exists (there should only be at most one)
         List<Action> existingActions = repository.findByTraineeIdAndTisReferenceInfo(
@@ -94,13 +95,7 @@ public class ActionService {
     }
 
     if (deleteAction) {
-      //remove any pre-existing saved action(s) that have not been completed
-      Long deletedActions = repository.deleteByTraineeIdAndTisReferenceInfoAndNotComplete(
-          action.traineeId(),
-          action.tisReferenceInfo().id(),
-          action.tisReferenceInfo().type().toString());
-      log.info("{} obsolete not completed action(s) deleted for placement {}",
-          deletedActions, dto.id());
+      deleteIncompleteActions(action);
     }
 
     if (actions.isEmpty()) {
@@ -122,9 +117,21 @@ public class ActionService {
   public List<ActionDto> updateActions(Operation operation, ProgrammeMembershipDto dto) {
     List<Action> actions = new ArrayList<>();
 
-    if (isProgrammeMembershipOperationaNewRecord(operation)) {
-      Action action = mapper.toAction(dto, REVIEW_DATA);
-      actions.add(action);
+    Action action = mapper.toAction(dto, REVIEW_DATA);
+
+    if (Objects.equals(operation, Operation.LOAD)
+        && (dto.startDate().isAfter(LocalDate.now()))) {
+      List<Action> existingActions = repository.findByTraineeIdAndTisReferenceInfo(
+          action.traineeId(), action.tisReferenceInfo().id(),
+          action.tisReferenceInfo().type().toString());
+      if (existingActions.isEmpty()) {
+        // only create action if it does not already exist
+        // and if the programme membership starts in the future
+        actions.add(action);
+      }
+    } else if (Objects.equals(operation, Operation.DELETE)) {
+      log.info("Programme membership {} is deleted", dto.id());
+      deleteIncompleteActions(action);
     }
 
     if (actions.isEmpty()) {
@@ -134,6 +141,21 @@ public class ActionService {
 
     log.info("Adding {} new action(s) for Programme Membership {}.", actions.size(), dto.id());
     return mapper.toDtos(repository.insert(actions));
+  }
+
+  /**
+   * Delete any not-completed actions that match the given action item.
+   *
+   * @param likeAction The action to use to identify candidates for deletion.
+   */
+  private void deleteIncompleteActions(Action likeAction) {
+    //remove any pre-existing saved action(s) that have not been completed
+    Long deletedActions = repository.deleteByTraineeIdAndTisReferenceInfoAndNotComplete(
+        likeAction.traineeId(),
+        likeAction.tisReferenceInfo().id(),
+        likeAction.tisReferenceInfo().type().toString());
+    log.info("{} obsolete not completed action(s) deleted for {} {}",
+        deletedActions, likeAction.tisReferenceInfo().type(), likeAction.tisReferenceInfo().id());
   }
 
   /**
@@ -180,30 +202,6 @@ public class ActionService {
     completedAction = repository.save(completedAction);
     log.info("Action {} marked as completed at {}.", actionId, completedAction.completed());
     return Optional.of(mapper.toDto(completedAction));
-  }
-
-  /**
-   * Determine if an operation means an update or new record for a placement.
-   *
-   * @param operation The operation.
-   * @return True if it means an update or new record for a placement, otherwise false.
-   */
-  private boolean isPlacementOperationAnUpdateOrNew(Operation operation) {
-    return Objects.equals(operation, Operation.LOAD)
-        || Objects.equals(operation, Operation.UPDATE)
-        || Objects.equals(operation, Operation.CREATE)
-        || Objects.equals(operation, Operation.INSERT);
-  }
-
-  /**
-   * Determine if an operation means a new record for a programme membership record.
-   *
-   * @param operation The operation.
-   * @return True if it means a new record for a programme membership, otherwise false.
-   */
-  private boolean isProgrammeMembershipOperationaNewRecord(Operation operation) {
-    return Objects.equals(operation, Operation.CREATE)
-        || Objects.equals(operation, Operation.INSERT);
   }
 
   /**
