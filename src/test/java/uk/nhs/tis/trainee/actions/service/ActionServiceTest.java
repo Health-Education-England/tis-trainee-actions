@@ -25,7 +25,6 @@ import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyIterable;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -82,16 +81,6 @@ class ActionServiceTest {
   void setUp() {
     repository = mock(ActionRepository.class);
     service = new ActionService(repository, new ActionMapperImpl());
-  }
-
-  @ParameterizedTest
-  @EnumSource(value = Operation.class, names = {"LOAD", "DELETE"}, mode = EXCLUDE)
-  void shouldNotInsertActionWhenProgrammeMembershipOperationNotSupported(Operation operation) {
-    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, FUTURE);
-
-    service.updateActions(operation, dto);
-
-    verifyNoInteractions(repository);
   }
 
   @Test
@@ -280,25 +269,14 @@ class ActionServiceTest {
     assertThat("Unexpected TIS type.", refInfo.type(), is(tisType));
   }
 
-  @ParameterizedTest
-  @EnumSource(value = Operation.class, names = {"LOAD", "DELETE"}, mode = EXCLUDE)
-  void shouldNotInsertActionWhenPlacementOperationNotSupported(Operation operation) {
-    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, PLACEMENT_TYPE);
-
-    service.updateActions(operation, dto);
-
-    verifyNoInteractions(repository);
-  }
-
-  @ParameterizedTest
-  @EnumSource(value = Operation.class, names = {"LOAD"})
-  void shouldInsertActionWhenPlacementOperationSupported(Operation operation) {
+  @Test
+  void shouldInsertActionWhenPlacementOperationLoad() {
     PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, PLACEMENT_TYPE);
 
     when(repository.findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
         String.valueOf(PLACEMENT))).thenReturn(Collections.emptyList());
 
-    service.updateActions(operation, dto);
+    service.updateActions(Operation.LOAD, dto);
 
     verify(repository).findByTraineeIdAndTisReferenceInfo(any(), any(), any());
     verify(repository).insert(anyList());
