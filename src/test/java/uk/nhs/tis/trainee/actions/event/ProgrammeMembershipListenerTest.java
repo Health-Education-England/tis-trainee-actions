@@ -124,12 +124,12 @@ class ProgrammeMembershipListenerTest {
 
   @ParameterizedTest
   @EnumSource(Operation.class)
-  void shouldSetDataTisIdFromRecordIfMissing(Operation operation) throws JsonProcessingException {
+  void shouldUseUuidIfTisIdMissing(Operation operation) throws JsonProcessingException {
     String eventJson = """
         {
           "record": {
-          "tisId": "%s",
             "data": {
+              "uuid": "%s",
               "personId": "%s",
               "startDate": "%s"
             },
@@ -148,44 +148,5 @@ class ProgrammeMembershipListenerTest {
     assertThat("Unexpected ID", dto.id(), is(PROGRAMME_MEMBERSHIP_ID));
     assertThat("Unexpected trainee ID", dto.traineeId(), is(TRAINEE_ID));
     assertThat("Unexpected start date", dto.startDate(), is(START_DATE));
-  }
-
-
-  @ParameterizedTest
-  @EnumSource(Operation.class)
-  void shouldNotSetDataTisIdFromRecordIfDataMissing(Operation operation)
-      throws JsonProcessingException {
-    String eventJson = """
-        {
-          "record": {
-            "operation": "%s"
-          }
-        }""".formatted(operation);
-    ProgrammeMembershipEvent event = mapper.readValue(eventJson, ProgrammeMembershipEvent.class);
-    assertThrows(IllegalArgumentException.class,
-        () -> listener.handleProgrammeMembershipSync(event));
-  }
-
-  @ParameterizedTest
-  @EnumSource(Operation.class)
-  void shouldNotSetDataTisIdFromRecordIfRecordTisIdMissing(Operation operation)
-      throws JsonProcessingException {
-    String eventJson = """
-        {
-          "record": {
-            "operation": "%s",
-            "data": {}
-          }
-        }""".formatted(operation);
-    ProgrammeMembershipEvent event = mapper.readValue(eventJson, ProgrammeMembershipEvent.class);
-
-    listener.handleProgrammeMembershipSync(event);
-
-    ArgumentCaptor<ProgrammeMembershipDto> dtoCaptor
-        = ArgumentCaptor.forClass(ProgrammeMembershipDto.class);
-    verify(service).updateActions(eq(operation), dtoCaptor.capture());
-
-    ProgrammeMembershipDto dto = dtoCaptor.getValue();
-    assertThat("Unexpected ID", dto.id(), is(nullValue()));
   }
 }

@@ -28,12 +28,15 @@ import java.time.LocalDate;
 /**
  * A representation of a programme membership.
  *
+ * <p>Note that operation=DELETE records are 'unenriched' by tis-trainee-sync, so they arrive with
+ * uuid instead of the tisId that records from e.g. LOAD operations arrive with.</p>
+ *
  * @param id        The programme membership ID.
  * @param traineeId The trainee ID associated with the membership.
  * @param startDate The programme start date.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record ProgrammeMembershipDto(@JsonAlias("tisId") String id,
+public record ProgrammeMembershipDto(@JsonAlias({"tisId", "uuid"}) String id,
                                      @JsonAlias("personId") String traineeId, LocalDate startDate) {
 
 }
