@@ -22,6 +22,7 @@
 package uk.nhs.tis.trainee.actions.event;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.eq;
@@ -148,5 +149,42 @@ class PlacementListenerTest {
     assertThat("Unexpected ID", dto.id(), is(PLACEMENT_ID));
     assertThat("Unexpected trainee ID", dto.traineeId(), is(TRAINEE_ID));
     assertThat("Unexpected start date", dto.startDate(), is(START_DATE));
+  }
+
+  @ParameterizedTest
+  @EnumSource(Operation.class)
+  void shouldNotSetDataTisIdFromRecordIfDataMissing(Operation operation)
+      throws JsonProcessingException {
+    String eventJson = """
+        {
+          "record": {
+            "operation": "%s"
+          }
+        }""".formatted(operation);
+    PlacementEvent event = mapper.readValue(eventJson, PlacementEvent.class);
+    assertThrows(IllegalArgumentException.class,
+        () -> listener.handlePlacementSync(event));
+  }
+
+  @ParameterizedTest
+  @EnumSource(Operation.class)
+  void shouldNotSetDataTisIdFromRecordIfRecordTisIdMissing(Operation operation)
+      throws JsonProcessingException {
+    String eventJson = """
+        {
+          "record": {
+            "operation": "%s",
+            "data": {}
+          }
+        }""".formatted(operation);
+    PlacementEvent event = mapper.readValue(eventJson, PlacementEvent.class);
+
+    listener.handlePlacementSync(event);
+
+    ArgumentCaptor<PlacementDto> dtoCaptor = ArgumentCaptor.forClass(PlacementDto.class);
+    verify(service).updateActions(eq(operation), dtoCaptor.capture());
+
+    PlacementDto dto = dtoCaptor.getValue();
+    assertThat("Unexpected ID", dto.id(), is(nullValue()));
   }
 }

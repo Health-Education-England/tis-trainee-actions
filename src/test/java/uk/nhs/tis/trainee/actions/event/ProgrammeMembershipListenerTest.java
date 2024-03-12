@@ -22,6 +22,7 @@
 package uk.nhs.tis.trainee.actions.event;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.eq;
@@ -147,5 +148,44 @@ class ProgrammeMembershipListenerTest {
     assertThat("Unexpected ID", dto.id(), is(PROGRAMME_MEMBERSHIP_ID));
     assertThat("Unexpected trainee ID", dto.traineeId(), is(TRAINEE_ID));
     assertThat("Unexpected start date", dto.startDate(), is(START_DATE));
+  }
+
+
+  @ParameterizedTest
+  @EnumSource(Operation.class)
+  void shouldNotSetDataTisIdFromRecordIfDataMissing(Operation operation)
+      throws JsonProcessingException {
+    String eventJson = """
+        {
+          "record": {
+            "operation": "%s"
+          }
+        }""".formatted(operation);
+    ProgrammeMembershipEvent event = mapper.readValue(eventJson, ProgrammeMembershipEvent.class);
+    assertThrows(IllegalArgumentException.class,
+        () -> listener.handleProgrammeMembershipSync(event));
+  }
+
+  @ParameterizedTest
+  @EnumSource(Operation.class)
+  void shouldNotSetDataTisIdFromRecordIfRecordTisIdMissing(Operation operation)
+      throws JsonProcessingException {
+    String eventJson = """
+        {
+          "record": {
+            "operation": "%s",
+            "data": {}
+          }
+        }""".formatted(operation);
+    ProgrammeMembershipEvent event = mapper.readValue(eventJson, ProgrammeMembershipEvent.class);
+
+    listener.handleProgrammeMembershipSync(event);
+
+    ArgumentCaptor<ProgrammeMembershipDto> dtoCaptor
+        = ArgumentCaptor.forClass(ProgrammeMembershipDto.class);
+    verify(service).updateActions(eq(operation), dtoCaptor.capture());
+
+    ProgrammeMembershipDto dto = dtoCaptor.getValue();
+    assertThat("Unexpected ID", dto.id(), is(nullValue()));
   }
 }

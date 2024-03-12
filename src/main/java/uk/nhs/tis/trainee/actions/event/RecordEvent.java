@@ -51,7 +51,9 @@ public abstract class RecordEvent {
   private void unpackRecord(JsonNode recordNode) {
     operation = getObjectMapper().convertValue(recordNode.get("operation"), Operation.class);
     String id = getObjectMapper().convertValue(recordNode.get(tisId), String.class);
-    if (!recordNode.get("data").hasNonNull(tisId)) {
+    if (recordNode.hasNonNull("data")
+        && !recordNode.get("data").hasNonNull(tisId)
+        && id != null) {
       ((ObjectNode) recordNode.get("data")).put(tisId, id);
     }
     unpackData(recordNode.get("data"));
