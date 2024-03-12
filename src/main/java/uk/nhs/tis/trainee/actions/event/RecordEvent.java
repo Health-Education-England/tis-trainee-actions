@@ -25,6 +25,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.Getter;
 
 /**
@@ -32,6 +33,8 @@ import lombok.Getter;
  */
 @Getter
 public abstract class RecordEvent {
+
+  private static final String tisId = "tisId";
 
   private static final ObjectMapper OBJECT_MAPPER = JsonMapper.builder()
       .findAndAddModules()
@@ -47,6 +50,10 @@ public abstract class RecordEvent {
   @JsonProperty("record")
   private void unpackRecord(JsonNode recordNode) {
     operation = getObjectMapper().convertValue(recordNode.get("operation"), Operation.class);
+    String id = getObjectMapper().convertValue(recordNode.get(tisId), String.class);
+    if (!recordNode.get("data").hasNonNull(tisId)) {
+      ((ObjectNode) recordNode.get("data")).put(tisId, id);
+    }
     unpackData(recordNode.get("data"));
   }
 

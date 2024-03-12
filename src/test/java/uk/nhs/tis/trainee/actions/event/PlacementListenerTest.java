@@ -121,4 +121,32 @@ class PlacementListenerTest {
     assertThat("Unexpected trainee ID", dto.traineeId(), is(TRAINEE_ID));
     assertThat("Unexpected start date", dto.startDate(), is(START_DATE));
   }
+
+  @ParameterizedTest
+  @EnumSource(Operation.class)
+  void shouldSetDataTisIdFromRecordIfMissing(Operation operation) throws JsonProcessingException {
+    String eventJson = """
+        {
+          "record": {
+            "tisId": "%s",
+            "data": {
+              "traineeId": "%s",
+              "dateFrom": "%s",
+              "placementType": "In post"
+            },
+            "operation": "%s"
+          }
+        }""".formatted(PLACEMENT_ID, TRAINEE_ID, START_DATE, operation);
+    PlacementEvent event = mapper.readValue(eventJson, PlacementEvent.class);
+
+    listener.handlePlacementSync(event);
+
+    ArgumentCaptor<PlacementDto> dtoCaptor = ArgumentCaptor.forClass(PlacementDto.class);
+    verify(service).updateActions(eq(operation), dtoCaptor.capture());
+
+    PlacementDto dto = dtoCaptor.getValue();
+    assertThat("Unexpected ID", dto.id(), is(PLACEMENT_ID));
+    assertThat("Unexpected trainee ID", dto.traineeId(), is(TRAINEE_ID));
+    assertThat("Unexpected start date", dto.startDate(), is(START_DATE));
+  }
 }
