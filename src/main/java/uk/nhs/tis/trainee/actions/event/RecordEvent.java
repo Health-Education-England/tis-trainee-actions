@@ -34,7 +34,7 @@ import lombok.Getter;
 @Getter
 public abstract class RecordEvent {
 
-  private static final String tisId = "tisId";
+  private static final String TIS_ID_FIELD = "tisId";
 
   private static final ObjectMapper OBJECT_MAPPER = JsonMapper.builder()
       .findAndAddModules()
@@ -50,11 +50,11 @@ public abstract class RecordEvent {
   @JsonProperty("record")
   private void unpackRecord(JsonNode recordNode) {
     operation = getObjectMapper().convertValue(recordNode.get("operation"), Operation.class);
-    String id = getObjectMapper().convertValue(recordNode.get(tisId), String.class);
+    String id = getObjectMapper().convertValue(recordNode.get(TIS_ID_FIELD), String.class);
     if (recordNode.hasNonNull("data")
-        && !recordNode.get("data").hasNonNull(tisId)
+        && !recordNode.get("data").hasNonNull(TIS_ID_FIELD)
         && id != null) {
-      ((ObjectNode) recordNode.get("data")).put(tisId, id);
+      ((ObjectNode) recordNode.get("data")).put(TIS_ID_FIELD, id);
     }
     unpackData(recordNode.get("data"));
   }
