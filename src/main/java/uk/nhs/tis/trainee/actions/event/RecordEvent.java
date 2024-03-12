@@ -50,6 +50,9 @@ public abstract class RecordEvent {
   @JsonProperty("record")
   private void unpackRecord(JsonNode recordNode) {
     operation = getObjectMapper().convertValue(recordNode.get("operation"), Operation.class);
+    // tis-trainee-sync provides 'unenriched' data for DELETE operation messages, which is missing
+    // the tisId (but may have the actual original ID field from TIS, e.g. uuid or id). The tisId
+    // is present at the record level, so we copy this into the data object if it is missing.
     String id = getObjectMapper().convertValue(recordNode.get(TIS_ID_FIELD), String.class);
     if (recordNode.hasNonNull("data")
         && !recordNode.get("data").hasNonNull(TIS_ID_FIELD)
