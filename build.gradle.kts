@@ -29,7 +29,7 @@ dependencyManagement {
 }
 
 val mapstructVersion = "1.5.5.Final"
-val sentryVersion = "7.4.0"
+val sentryVersion = "7.6.0"
 
 dependencies {
   // Spring Boot starters
@@ -50,7 +50,7 @@ dependencies {
   annotationProcessor("org.mapstruct:mapstruct-processor:$mapstructVersion")
 
   // Sentry reporting
-  implementation("io.sentry:sentry-spring-boot-starter:$sentryVersion")
+  implementation("io.sentry:sentry-spring-boot-starter-jakarta:$sentryVersion")
   implementation("io.sentry:sentry-logback:$sentryVersion")
 }
 
