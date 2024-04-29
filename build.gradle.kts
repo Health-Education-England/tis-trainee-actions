@@ -38,7 +38,7 @@ dependencies {
   implementation("org.springframework.boot:spring-boot-starter-web")
 
   // AWS
-  implementation("com.amazonaws:aws-xray-recorder-sdk-spring:2.15.2")
+  implementation("com.amazonaws:aws-xray-recorder-sdk-spring:2.15.3")
   implementation("io.awspring.cloud:spring-cloud-aws-starter-sqs")
 
   // Lombok
