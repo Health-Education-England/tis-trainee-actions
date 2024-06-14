@@ -3,6 +3,8 @@ application:
   queues:
     placement-synced: ${PLACEMENT_SYNCED_QUEUE}
     programme-membership-synced: ${PROGRAMME_MEMBERSHIP_SYNCED_QUEUE}
+  sns:
+    arn: ${ACTION_EVENT_TOPIC}
 
 com:
   amazonaws:

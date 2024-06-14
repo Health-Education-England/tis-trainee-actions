@@ -51,10 +51,13 @@ public class ActionService {
 
   private final ActionRepository repository;
   private final ActionMapper mapper;
+  private final EventPublishingService eventPublishingService;
 
-  public ActionService(ActionRepository repository, ActionMapper mapper) {
+  public ActionService(ActionRepository repository, ActionMapper mapper,
+                       EventPublishingService eventPublishingService) {
     this.repository = repository;
     this.mapper = mapper;
+    this.eventPublishingService = eventPublishingService;
   }
 
   /**
@@ -80,8 +83,10 @@ public class ActionService {
           actions.add(action);
         } else {
           if (replaceUpdatedPlacementAction(existingActions, action, dto.id())) {
-            repository.deleteByTraineeIdAndTisReferenceInfo(action.traineeId(),
-                action.tisReferenceInfo().id(), action.tisReferenceInfo().type().toString());
+            List<Action> deletedActions = repository.deleteByTraineeIdAndTisReferenceInfo(
+                action.traineeId(), action.tisReferenceInfo().id(),
+                action.tisReferenceInfo().type().toString());
+            deletedActions.stream().forEach(eventPublishingService::publishActionDeleteEvent);
             actions.add(action);
           }
         }
@@ -104,7 +109,9 @@ public class ActionService {
     }
 
     log.info("Adding {} new action(s) for Placement {}.", actions.size(), dto.id());
-    return mapper.toDtos(repository.insert(actions));
+    List<Action> actionInserted = repository.insert(actions);
+    actionInserted.stream().forEach(eventPublishingService::publishActionUpdateEvent);
+    return mapper.toDtos(actionInserted);
   }
 
   /**
@@ -140,7 +147,9 @@ public class ActionService {
     }
 
     log.info("Adding {} new action(s) for Programme Membership {}.", actions.size(), dto.id());
-    return mapper.toDtos(repository.insert(actions));
+    List<Action> actionInserted = repository.insert(actions);
+    actionInserted.stream().forEach(eventPublishingService::publishActionUpdateEvent);
+    return mapper.toDtos(actionInserted);
   }
 
   /**
@@ -150,12 +159,13 @@ public class ActionService {
    */
   private void deleteIncompleteActions(Action likeAction) {
     //remove any pre-existing saved action(s) that have not been completed
-    Long deletedActions = repository.deleteByTraineeIdAndTisReferenceInfoAndNotComplete(
+    List<Action> deletedActions = repository.deleteByTraineeIdAndTisReferenceInfoAndNotComplete(
         likeAction.traineeId(),
         likeAction.tisReferenceInfo().id(),
         likeAction.tisReferenceInfo().type().toString());
-    log.info("{} obsolete not completed action(s) deleted for {} {}",
-        deletedActions, likeAction.tisReferenceInfo().type(), likeAction.tisReferenceInfo().id());
+    log.info("{} obsolete not completed action(s) deleted for {} {}", deletedActions.size(),
+        likeAction.tisReferenceInfo().type(), likeAction.tisReferenceInfo().id());
+    deletedActions.stream().forEach(eventPublishingService::publishActionDeleteEvent);
   }
 
   /**
@@ -200,6 +210,7 @@ public class ActionService {
 
     Action completedAction = mapper.complete(action);
     completedAction = repository.save(completedAction);
+    eventPublishingService.publishActionUpdateEvent(completedAction);
     log.info("Action {} marked as completed at {}.", actionId, completedAction.completed());
     return Optional.of(mapper.toDto(completedAction));
   }
