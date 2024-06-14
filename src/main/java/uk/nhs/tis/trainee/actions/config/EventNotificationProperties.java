@@ -19,20 +19,26 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.actions;
+package uk.nhs.tis.trainee.actions.config;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * An application for the management of trainee actions.
+ * A representation of the event notification endpoint properties.
+ *
+ * @param actionBroadcastEvent The action event ARN
  */
-@SpringBootApplication
-@ConfigurationPropertiesScan
-public class TisTraineeActionsApplication {
+@ConfigurationProperties(prefix = "application.sns")
+public record EventNotificationProperties(
+    SnsRoute actionBroadcastEvent) {
 
-  public static void main(String[] args) {
-    SpringApplication.run(TisTraineeActionsApplication.class);
+  /**
+   * An SNS route with a message attribute for routing purposes.
+   *
+   * @param arn              The SNS ARN.
+   * @param messageAttribute The message attribute to use.
+   */
+  public record SnsRoute(String arn, String messageAttribute) {
+
   }
 }

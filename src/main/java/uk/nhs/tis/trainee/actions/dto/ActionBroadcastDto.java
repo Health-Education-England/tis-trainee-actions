@@ -19,20 +19,34 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.actions;
+package uk.nhs.tis.trainee.actions.dto;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
+import uk.nhs.tis.trainee.actions.dto.enumeration.ActionStatus;
+import uk.nhs.tis.trainee.actions.model.Action.TisReferenceInfo;
+
+import java.time.Instant;
+import java.time.LocalDate;
 
 /**
- * An application for the management of trainee actions.
+ * A DTO for Action data to export to NDW.
+ *
+ * @param id               The ID of the action.
+ * @param type             The type of action.
+ * @param traineeId        The ID of the trainee who the action is for.
+ * @param tisReferenceInfo The TIS core object associated with the action.
+ * @param availableFrom    When the action is available to complete.
+ * @param dueBy            When the action is due to be completed by.
+ * @param completed        When the action was completed, null if not completed.
  */
-@SpringBootApplication
-@ConfigurationPropertiesScan
-public class TisTraineeActionsApplication {
+public record ActionBroadcastDto(
+    String id,
+    String type,
+    String traineeId,
+    TisReferenceInfo tisReferenceInfo,
+    LocalDate availableFrom,
+    LocalDate dueBy,
+    Instant completed,
+    ActionStatus status,
+    Instant lastUpdateTime) {
 
-  public static void main(String[] args) {
-    SpringApplication.run(TisTraineeActionsApplication.class);
-  }
 }

@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "uk.nhs.tis.trainee"
-version = "0.6.4"
+version = "0.7.0"
 
 configurations {
   compileOnly {
@@ -39,6 +39,7 @@ dependencies {
 
   // AWS
   implementation("com.amazonaws:aws-xray-recorder-sdk-spring:2.15.2")
+  implementation("io.awspring.cloud:spring-cloud-aws-starter-sns")
   implementation("io.awspring.cloud:spring-cloud-aws-starter-sqs")
 
   // Lombok

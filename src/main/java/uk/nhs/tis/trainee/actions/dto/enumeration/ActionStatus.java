@@ -19,20 +19,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.actions;
+package uk.nhs.tis.trainee.actions.dto.enumeration;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
+public enum ActionStatus {
+  ACTIVE,
+  DELETED
 
-/**
- * An application for the management of trainee actions.
- */
-@SpringBootApplication
-@ConfigurationPropertiesScan
-public class TisTraineeActionsApplication {
-
-  public static void main(String[] args) {
-    SpringApplication.run(TisTraineeActionsApplication.class);
-  }
 }

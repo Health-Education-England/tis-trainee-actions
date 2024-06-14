@@ -1,8 +1,11 @@
 application:
   environment: ${ENVIRONMENT:local}
   queues:
-    placement-synced: ${PLACEMENT_SYNCED_QUEUE}
-    programme-membership-synced: ${PROGRAMME_MEMBERSHIP_SYNCED_QUEUE}
+    placement-synced: ${PLACEMENT_SYNCED_QUEUE:http://localstack:4566/000000000000/tis-trainee-sync-local-record}
+    programme-membership-synced: ${PROGRAMME_MEMBERSHIP_SYNCED_QUEUE:http://localstack:4566/000000000000/tis-trainee-sync-local-programme-membership}
+  sns:
+    arn: ${ACTION_UPDATE_TOPIC:arn:aws:sns:eu-west-2:000000000000:tis-trainee-actions-event}
+    message-attribute: ACTION
 
 com:
   amazonaws:
@@ -22,7 +25,7 @@ sentry:
 spring:
   cloud:
     aws:
-      endpoint: ${AWS_ENDPOINT:}
+      endpoint: ${AWS_ENDPOINT:http://localhost:4566/}
   data:
     mongodb:
       uri: mongodb://${MONGO_USER:admin}:${MONGO_PASSWORD:pwd}@${MONGO_HOST:localhost}:${MONGO_PORT:27017}/${MONGO_DB:actions}?authSource=admin
