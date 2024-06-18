@@ -128,9 +128,9 @@ class ActionRepositoryIntegrationTest {
 
     repository.insert(action1);
 
-    Long deletedCount = repository.deleteByTraineeIdAndTisReferenceInfoAndNotComplete(
+    List<Action> deletedActions = repository.deleteByTraineeIdAndTisReferenceInfoAndNotComplete(
         TRAINEE_ID_1, TIS_ID, PLACEMENT.toString());
-    assertThat("Unexpected delete count.", deletedCount, is(0L));
+    assertThat("Unexpected delete count.", deletedActions.size(), is(0L));
   }
 
   @Test
@@ -141,9 +141,9 @@ class ActionRepositoryIntegrationTest {
 
     repository.insert(action1);
 
-    Long deletedCount = repository.deleteByTraineeIdAndTisReferenceInfoAndNotComplete(
+    List<Action> deletedActions = repository.deleteByTraineeIdAndTisReferenceInfoAndNotComplete(
         TRAINEE_ID_1, TIS_ID, PLACEMENT.toString());
-    assertThat("Unexpected delete count.", deletedCount, is(1L));
+    assertThat("Unexpected delete count.", deletedActions.size(), is(1L));
   }
 
   @ParameterizedTest
@@ -156,8 +156,8 @@ class ActionRepositoryIntegrationTest {
 
     repository.insert(action1);
 
-    Long noDeleted = repository.deleteByTraineeIdAndTisReferenceInfo(
+    List<Action> deletedActions = repository.deleteByTraineeIdAndTisReferenceInfo(
         TRAINEE_ID_1, TIS_ID, PLACEMENT.toString());
-    assertThat("Unexpected delete count.", noDeleted, is(1L));
+    assertThat("Unexpected delete count.", deletedActions.size(), is(1L));
   }
 }

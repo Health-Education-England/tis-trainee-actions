@@ -53,6 +53,9 @@ public class ActionService {
   private final ActionMapper mapper;
   private final EventPublishingService eventPublishingService;
 
+  /**
+   * The constructor of action service.
+   */
   public ActionService(ActionRepository repository, ActionMapper mapper,
                        EventPublishingService eventPublishingService) {
     this.repository = repository;

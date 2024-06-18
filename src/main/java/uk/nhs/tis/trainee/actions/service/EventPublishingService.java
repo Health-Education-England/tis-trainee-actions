@@ -21,11 +21,10 @@
 
 package uk.nhs.tis.trainee.actions.service;
 
-import java.net.URI;
-import java.time.Instant;
-
 import io.awspring.cloud.sns.core.SnsNotification;
 import io.awspring.cloud.sns.core.SnsTemplate;
+import java.net.URI;
+import java.time.Instant;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -94,7 +93,7 @@ public class EventPublishingService {
    *
    * @param action The broadcast DTO of the action to publish.
    */
-  public void publishActionBroadcastEvent(ActionBroadcastDto action) {
+  private void publishActionBroadcastEvent(ActionBroadcastDto action) {
     String actionId = action.id();
     log.info("Publishing event for action {}", actionId);
 

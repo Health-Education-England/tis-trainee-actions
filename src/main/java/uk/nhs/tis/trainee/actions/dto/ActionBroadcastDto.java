@@ -21,11 +21,10 @@
 
 package uk.nhs.tis.trainee.actions.dto;
 
-import uk.nhs.tis.trainee.actions.dto.enumeration.ActionStatus;
-import uk.nhs.tis.trainee.actions.model.Action.TisReferenceInfo;
-
 import java.time.Instant;
 import java.time.LocalDate;
+import uk.nhs.tis.trainee.actions.dto.enumeration.ActionStatus;
+import uk.nhs.tis.trainee.actions.model.Action.TisReferenceInfo;
 
 /**
  * A DTO for Action data to export to NDW.
