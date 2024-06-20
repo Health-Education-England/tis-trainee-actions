@@ -39,13 +39,16 @@ import uk.nhs.tis.trainee.actions.model.Action;
 public class EventPublishingService {
 
   private final SnsTemplate snsTemplate;
-  private final ActionMapper ActionMapper;
+  private final ActionMapper actionMapper;
   private final URI topicArn;
 
-  public EventPublishingService(SnsTemplate snsTemplate, ActionMapper ActionMapper,
+  /**
+   * The constructor of event publishing service.
+   */
+  public EventPublishingService(SnsTemplate snsTemplate, ActionMapper actionMapper,
                                 @Value("${application.sns.arn}") URI arn) {
     this.snsTemplate = snsTemplate;
-    this.ActionMapper = ActionMapper;
+    this.actionMapper = actionMapper;
     this.topicArn = arn;
   }
 
@@ -55,7 +58,7 @@ public class EventPublishingService {
    * @param action The updated Action to publish.
    */
   public void publishActionUpdateEvent(Action action) {
-    ActionBroadcastDto broadcastAction = ActionMapper.toCurrentActionBroadcastDto(action);
+    ActionBroadcastDto broadcastAction = actionMapper.toCurrentActionBroadcastDto(action);
     publishActionBroadcastEvent(broadcastAction);
   }
 
@@ -65,7 +68,7 @@ public class EventPublishingService {
    * @param action The deleted Action to publish.
    */
   public void publishActionDeleteEvent(Action action) {
-    ActionBroadcastDto broadcastAction = ActionMapper.toDeletedActionBroadcastDto(action);
+    ActionBroadcastDto broadcastAction = actionMapper.toDeletedActionBroadcastDto(action);
     publishActionBroadcastEvent(broadcastAction);
   }
 
