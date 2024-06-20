@@ -107,7 +107,6 @@ public interface ActionMapper {
    */
   @Mapping(target = "id", expression = "java(action.id().toString())")
   @Mapping(target = "type", expression = "java(action.type().toString())")
-  @Mapping(target = "completed", ignore = true)
   @Mapping(target = "status", constant = "CURRENT")
   @Mapping(target = "statusDatetime", expression = "java(java.time.Instant.now())")
   ActionBroadcastDto toCurrentActionBroadcastDto(Action action);
