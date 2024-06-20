@@ -301,7 +301,7 @@ class ActionServiceTest {
         String.valueOf(PLACEMENT))).thenReturn(Collections.emptyList());
 
     service.updateActions(Operation.LOAD, dto);
-    verify(eventPublishingService, never()).publishActionDeleteEvent(any());
+    verifyNoInteractions(eventPublishingService);
     verify(repository, never()).insert(anyList());
   }
 
@@ -353,7 +353,7 @@ class ActionServiceTest {
     assertThat("Unexpected action count.", actions.size(), is(0));
     verify(repository).findByTraineeIdAndTisReferenceInfo(any(), any(), any());
     verifyNoMoreInteractions(repository);
-    verifyNoMoreInteractions(eventPublishingService);
+    verifyNoInteractions(eventPublishingService);
   }
 
   @Test
@@ -415,7 +415,7 @@ class ActionServiceTest {
     verify(eventPublishingService).publishActionUpdateEvent(actionCaptor.capture());
 
     Action broadcastAction = actionCaptor.getValue();
-    assertThat("Unexpected action id.", broadcastAction.id(), is(nullValue()));
+    assertThat("Unexpected action id.", broadcastAction.id(), nullValue());
     assertThat("Unexpected action type.", broadcastAction.type(), is(REVIEW_DATA));
     assertThat("Unexpected trainee id.", broadcastAction.traineeId(), is(TRAINEE_ID));
     assertThat("Unexpected available from date.", broadcastAction.availableFrom(),

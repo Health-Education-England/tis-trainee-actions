@@ -24,15 +24,12 @@ package uk.nhs.tis.trainee.actions.service;
 import io.awspring.cloud.sns.core.SnsNotification;
 import io.awspring.cloud.sns.core.SnsTemplate;
 import java.net.URI;
-import java.time.Instant;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import uk.nhs.tis.trainee.actions.dto.ActionBroadcastDto;
-import uk.nhs.tis.trainee.actions.dto.enumeration.ActionStatus;
+import uk.nhs.tis.trainee.actions.mapper.ActionMapper;
 import uk.nhs.tis.trainee.actions.model.Action;
-
-
 
 /**
  * A service handling publishing of events to an external message system.
@@ -42,11 +39,13 @@ import uk.nhs.tis.trainee.actions.model.Action;
 public class EventPublishingService {
 
   private final SnsTemplate snsTemplate;
+  private final ActionMapper ActionMapper;
   private final URI topicArn;
 
-  public EventPublishingService(SnsTemplate snsTemplate,
+  public EventPublishingService(SnsTemplate snsTemplate, ActionMapper ActionMapper,
                                 @Value("${application.sns.arn}") URI arn) {
     this.snsTemplate = snsTemplate;
+    this.ActionMapper = ActionMapper;
     this.topicArn = arn;
   }
 
@@ -56,16 +55,7 @@ public class EventPublishingService {
    * @param action The updated Action to publish.
    */
   public void publishActionUpdateEvent(Action action) {
-    ActionBroadcastDto broadcastAction = new ActionBroadcastDto(
-        action.id().toString(),
-        action.type().toString(),
-        action.traineeId(),
-        action.tisReferenceInfo(),
-        action.availableFrom(),
-        action.dueBy(),
-        action.completed(),
-        ActionStatus.ACTIVE,
-        Instant.now());
+    ActionBroadcastDto broadcastAction = ActionMapper.toCurrentActionBroadcastDto(action);
     publishActionBroadcastEvent(broadcastAction);
   }
 
@@ -75,16 +65,7 @@ public class EventPublishingService {
    * @param action The deleted Action to publish.
    */
   public void publishActionDeleteEvent(Action action) {
-    ActionBroadcastDto broadcastAction = new ActionBroadcastDto(
-        action.id().toString(),
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        ActionStatus.DELETED,
-        Instant.now());
+    ActionBroadcastDto broadcastAction = ActionMapper.toDeletedActionBroadcastDto(action);
     publishActionBroadcastEvent(broadcastAction);
   }
 

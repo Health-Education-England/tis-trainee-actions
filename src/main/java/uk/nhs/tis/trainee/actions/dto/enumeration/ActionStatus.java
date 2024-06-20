@@ -25,7 +25,7 @@ package uk.nhs.tis.trainee.actions.dto.enumeration;
  * An enumeration of action status.
  */
 public enum ActionStatus {
-  ACTIVE,
+  CURRENT,
   DELETED
 
 }

@@ -29,6 +29,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.actions.model.ActionType.REVIEW_DATA;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PLACEMENT;
 
@@ -43,6 +44,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import uk.nhs.tis.trainee.actions.dto.ActionBroadcastDto;
 import uk.nhs.tis.trainee.actions.dto.enumeration.ActionStatus;
+import uk.nhs.tis.trainee.actions.mapper.ActionMapper;
 import uk.nhs.tis.trainee.actions.model.Action;
 
 class EventPublishingServiceTest {
@@ -58,14 +60,14 @@ class EventPublishingServiceTest {
   private static final LocalDate FUTURE = NOW.plusDays(1);
 
   private EventPublishingService service;
-  private EventPublishingService eventPublishingService;
+  private ActionMapper actionMapper;
   private SnsTemplate snsTemplate;
 
   @BeforeEach
   void setUp() {
     snsTemplate = mock(SnsTemplate.class);
-    eventPublishingService = mock(EventPublishingService.class);
-    service = new EventPublishingService(snsTemplate, ACTION_TOPIC_ARN);
+    actionMapper = mock(ActionMapper.class);
+    service = new EventPublishingService(snsTemplate, actionMapper, ACTION_TOPIC_ARN);
   }
 
   @Test
@@ -73,6 +75,11 @@ class EventPublishingServiceTest {
     Action.TisReferenceInfo tisReference = new Action.TisReferenceInfo(TIS_ID, PLACEMENT);
     Action action = new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, tisReference, PAST, FUTURE,
         COMPLETED);
+    ActionBroadcastDto actionBroadcastDto = new ActionBroadcastDto(ACTION_ID.toString(),
+        REVIEW_DATA.toString(), TRAINEE_ID, tisReference, PAST, FUTURE,
+        COMPLETED, ActionStatus.CURRENT, Instant.now());
+
+    when(actionMapper.toCurrentActionBroadcastDto(action)).thenReturn(actionBroadcastDto);
 
     service.publishActionUpdateEvent(action);
 
@@ -85,6 +92,11 @@ class EventPublishingServiceTest {
     Action.TisReferenceInfo tisReference = new Action.TisReferenceInfo(TIS_ID, PLACEMENT);
     Action action = new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, tisReference, PAST, FUTURE,
         COMPLETED);
+    ActionBroadcastDto actionBroadcastDto = new ActionBroadcastDto(ACTION_ID.toString(),
+        REVIEW_DATA.toString(), TRAINEE_ID, tisReference, PAST, FUTURE,
+        COMPLETED, ActionStatus.CURRENT, Instant.now());
+
+    when(actionMapper.toCurrentActionBroadcastDto(action)).thenReturn(actionBroadcastDto);
 
     service.publishActionUpdateEvent(action);
 
@@ -101,6 +113,11 @@ class EventPublishingServiceTest {
     Action.TisReferenceInfo tisReference = new Action.TisReferenceInfo(TIS_ID, PLACEMENT);
     Action action = new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, tisReference, PAST, FUTURE,
         COMPLETED);
+    ActionBroadcastDto actionBroadcastDto = new ActionBroadcastDto(ACTION_ID.toString(),
+        REVIEW_DATA.toString(), TRAINEE_ID, tisReference, PAST, FUTURE,
+        COMPLETED, ActionStatus.CURRENT, Instant.now());
+
+    when(actionMapper.toCurrentActionBroadcastDto(action)).thenReturn(actionBroadcastDto);
 
     service.publishActionUpdateEvent(action);
 
@@ -119,7 +136,7 @@ class EventPublishingServiceTest {
     assertThat("Unexpected available from date.", payload.availableFrom(), is(PAST));
     assertThat("Unexpected due by date.", payload.dueBy(), is(FUTURE));
     assertThat("Unexpected completed date.", payload.completed(), is(COMPLETED));
-    assertThat("Unexpected action status", payload.status(), is(ActionStatus.ACTIVE));
+    assertThat("Unexpected action status", payload.status(), is(ActionStatus.CURRENT));
     assertThat("Unexpected action status date.", payload.statusDatetime(),
         instanceOf(Instant.class));
   }
@@ -129,6 +146,11 @@ class EventPublishingServiceTest {
     Action.TisReferenceInfo tisReference = new Action.TisReferenceInfo(TIS_ID, PLACEMENT);
     Action action = new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, tisReference, PAST, FUTURE,
         COMPLETED);
+    ActionBroadcastDto actionBroadcastDto = new ActionBroadcastDto(ACTION_ID.toString(),
+        null, null, null, null, null,
+        null, ActionStatus.DELETED, Instant.now());
+
+    when(actionMapper.toDeletedActionBroadcastDto(action)).thenReturn(actionBroadcastDto);
 
     service.publishActionDeleteEvent(action);
 
@@ -141,6 +163,11 @@ class EventPublishingServiceTest {
     Action.TisReferenceInfo tisReference = new Action.TisReferenceInfo(TIS_ID, PLACEMENT);
     Action action = new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, tisReference, PAST, FUTURE,
         COMPLETED);
+    ActionBroadcastDto actionBroadcastDto = new ActionBroadcastDto(ACTION_ID.toString(),
+        null, null, null, null, null,
+        null, ActionStatus.DELETED, Instant.now());
+
+    when(actionMapper.toDeletedActionBroadcastDto(action)).thenReturn(actionBroadcastDto);
 
     service.publishActionDeleteEvent(action);
 
@@ -157,6 +184,11 @@ class EventPublishingServiceTest {
     Action.TisReferenceInfo tisReference = new Action.TisReferenceInfo(TIS_ID, PLACEMENT);
     Action action = new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, tisReference, PAST, FUTURE,
         COMPLETED);
+    ActionBroadcastDto actionBroadcastDto = new ActionBroadcastDto(ACTION_ID.toString(),
+        null, null, null, null, null,
+        null, ActionStatus.DELETED, Instant.now());
+
+    when(actionMapper.toDeletedActionBroadcastDto(action)).thenReturn(actionBroadcastDto);
 
     service.publishActionDeleteEvent(action);
 
@@ -167,12 +199,12 @@ class EventPublishingServiceTest {
     SnsNotification<ActionBroadcastDto> message = messageCaptor.getValue();
     ActionBroadcastDto payload = message.getPayload();
     assertThat("Unexpected action id.", payload.id(), is(ACTION_ID_STRING));
-    assertThat("Unexpected action type.", payload.type(), is(nullValue()));
-    assertThat("Unexpected trainee id.", payload.traineeId(), is(nullValue()));
-    assertThat("Unexpected reference info", payload.tisReferenceInfo(), is(nullValue()));
-    assertThat("Unexpected available from date.", payload.availableFrom(), is(nullValue()));
-    assertThat("Unexpected due by date.", payload.dueBy(), is(nullValue()));
-    assertThat("Unexpected completed date.", payload.completed(), is(nullValue()));
+    assertThat("Unexpected action type.", payload.type(), nullValue());
+    assertThat("Unexpected trainee id.", payload.traineeId(), nullValue());
+    assertThat("Unexpected reference info", payload.tisReferenceInfo(), nullValue());
+    assertThat("Unexpected available from date.", payload.availableFrom(), nullValue());
+    assertThat("Unexpected due by date.", payload.dueBy(), nullValue());
+    assertThat("Unexpected completed date.", payload.completed(), nullValue());
     assertThat("Unexpected action status", payload.status(), is(ActionStatus.DELETED));
     assertThat("Unexpected action status date.", payload.statusDatetime(),
         instanceOf(Instant.class));

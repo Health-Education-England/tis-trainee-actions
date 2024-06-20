@@ -26,6 +26,7 @@ import static org.mapstruct.MappingConstants.ComponentModel.SPRING;
 import java.util.List;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import uk.nhs.tis.trainee.actions.dto.ActionBroadcastDto;
 import uk.nhs.tis.trainee.actions.dto.ActionDto;
 import uk.nhs.tis.trainee.actions.dto.PlacementDto;
 import uk.nhs.tis.trainee.actions.dto.ProgrammeMembershipDto;
@@ -97,6 +98,36 @@ public interface ActionMapper {
   @Mapping(target = "dueBy", source = "dto.startDate")
   @Mapping(target = "completed", ignore = true)
   Action toAction(PlacementDto dto, ActionType type);
+
+  /**
+   * Create a CURRENT ActionBroadcastDto from an Action.
+   *
+   * @param action  The Action to map from.
+   * @return The ActionBroadcastDto.
+   */
+  @Mapping(target = "id", expression = "java(action.id().toString())")
+  @Mapping(target = "type", expression = "java(action.type().toString())")
+  @Mapping(target = "completed", ignore = true)
+  @Mapping(target = "status", constant = "CURRENT")
+  @Mapping(target = "statusDatetime", expression = "java(java.time.Instant.now())")
+  ActionBroadcastDto toCurrentActionBroadcastDto(Action action);
+
+  /**
+   * Create a DELETED ActionBroadcastDto from an Action.
+   *
+   * @param action  The Action to map from.
+   * @return The ActionBroadcastDto.
+   */
+  @Mapping(target = "id", expression = "java(action.id().toString())")
+  @Mapping(target = "type", expression = "java(null)")
+  @Mapping(target = "traineeId", expression = "java(null)")
+  @Mapping(target = "tisReferenceInfo", expression = "java(null)")
+  @Mapping(target = "availableFrom", expression = "java(null)")
+  @Mapping(target = "dueBy", expression = "java(null)")
+  @Mapping(target = "completed", expression = "java(null)")
+  @Mapping(target = "status", constant = "DELETED")
+  @Mapping(target = "statusDatetime", expression = "java(java.time.Instant.now())")
+  ActionBroadcastDto toDeletedActionBroadcastDto(Action action);
 
   /**
    * Map a Programme Membership to a TIS reference info object.
