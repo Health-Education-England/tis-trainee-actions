@@ -118,12 +118,12 @@ public interface ActionMapper {
    * @return The ActionBroadcastDto.
    */
   @Mapping(target = "id", expression = "java(action.id().toString())")
-  @Mapping(target = "type", expression = "java(null)")
-  @Mapping(target = "traineeId", expression = "java(null)")
-  @Mapping(target = "tisReferenceInfo", expression = "java(null)")
-  @Mapping(target = "availableFrom", expression = "java(null)")
-  @Mapping(target = "dueBy", expression = "java(null)")
-  @Mapping(target = "completed", expression = "java(null)")
+  @Mapping(target = "type", ignore = true)
+  @Mapping(target = "traineeId", ignore = true)
+  @Mapping(target = "tisReferenceInfo", ignore = true)
+  @Mapping(target = "availableFrom", ignore = true)
+  @Mapping(target = "dueBy", ignore = true)
+  @Mapping(target = "completed", ignore = true)
   @Mapping(target = "status", constant = "DELETED")
   @Mapping(target = "statusDatetime", expression = "java(java.time.Instant.now())")
   ActionBroadcastDto toDeletedActionBroadcastDto(Action action);

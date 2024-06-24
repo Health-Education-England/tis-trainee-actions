@@ -36,7 +36,7 @@ import uk.nhs.tis.trainee.actions.model.Action.TisReferenceInfo;
  * @param availableFrom    When the action is available to complete.
  * @param dueBy            When the action is due to be completed by.
  * @param completed        When the action was completed, null if not completed.
- * @param status           The status of Actions (ACTIVE or DELETED).
+ * @param status           The status of Actions (CURRENT or DELETED).
  * @param statusDatetime   When the status was set.
  */
 public record ActionBroadcastDto(
