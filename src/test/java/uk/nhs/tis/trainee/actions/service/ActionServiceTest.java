@@ -30,6 +30,7 @@ import static org.mockito.ArgumentMatchers.anyIterable;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -76,11 +77,13 @@ class ActionServiceTest {
 
   private ActionService service;
   private ActionRepository repository;
+  private EventPublishingService eventPublishingService;
 
   @BeforeEach
   void setUp() {
     repository = mock(ActionRepository.class);
-    service = new ActionService(repository, new ActionMapperImpl());
+    eventPublishingService = mock(EventPublishingService.class);
+    service = new ActionService(repository, new ActionMapperImpl(), eventPublishingService);
   }
 
   @Test
@@ -107,6 +110,8 @@ class ActionServiceTest {
     TisReferenceInfo tisReference = action.tisReferenceInfo();
     assertThat("Unexpected TIS id.", tisReference.id(), is(TIS_ID));
     assertThat("Unexpected TIS type.", tisReference.type(), is(PROGRAMME_MEMBERSHIP));
+
+    verify(eventPublishingService, times(1)).publishActionUpdateEvent(any());
   }
 
   @Test
@@ -117,6 +122,7 @@ class ActionServiceTest {
 
     assertThat("Unexpected action count.", actions.size(), is(0));
     verifyNoInteractions(repository);
+    verifyNoMoreInteractions(eventPublishingService);
   }
 
   @Test
@@ -135,6 +141,7 @@ class ActionServiceTest {
     assertThat("Unexpected action count.", actions.size(), is(0));
     verify(repository).findByTraineeIdAndTisReferenceInfo(any(), any(), any());
     verifyNoMoreInteractions(repository);
+    verifyNoMoreInteractions(eventPublishingService);
   }
 
   @Test
@@ -145,6 +152,8 @@ class ActionServiceTest {
     List<ActionDto> dtos = service.findIncompleteTraineeActions(TRAINEE_ID);
 
     assertThat("Unexpected action count.", dtos.size(), is(0));
+
+    verifyNoMoreInteractions(eventPublishingService);
   }
 
   @ParameterizedTest
@@ -213,6 +222,7 @@ class ActionServiceTest {
 
     assertThat("Unexpected action presence.", optionalAction.isPresent(), is(false));
     verify(repository, never()).save(any());
+    verifyNoInteractions(eventPublishingService);
   }
 
   @ParameterizedTest
@@ -228,6 +238,7 @@ class ActionServiceTest {
 
     ArgumentCaptor<Action> actionCaptor = ArgumentCaptor.forClass(Action.class);
     verify(repository).save(actionCaptor.capture());
+    verify(eventPublishingService).publishActionUpdateEvent(actionCaptor.capture());
 
     Action completedAction = actionCaptor.getValue();
     assertThat("Unexpected action id.", completedAction.id(), is(ACTION_ID));
@@ -286,30 +297,46 @@ class ActionServiceTest {
   void shouldNotInsertActionAndDeleteAnyExistingNotCompleteActionsWhenPlacementTypeIgnored() {
     PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, "ignored placement type");
 
+    when(repository.deleteByTraineeIdAndTisReferenceInfoAndNotComplete(TRAINEE_ID, TIS_ID,
+        String.valueOf(PLACEMENT))).thenReturn(Collections.emptyList());
+
     service.updateActions(Operation.LOAD, dto);
-    verify(repository).deleteByTraineeIdAndTisReferenceInfoAndNotComplete(TRAINEE_ID, TIS_ID,
-        String.valueOf(PLACEMENT));
-    verifyNoMoreInteractions(repository);
+    verifyNoInteractions(eventPublishingService);
+    verify(repository, never()).insert(anyList());
   }
 
   @Test
   void shouldDeleteAnyExistingNotCompleteActionsWhenPlacementOperationIsDelete() {
     PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, PLACEMENT_TYPE);
 
+    Action action1 = new Action(ObjectId.get(), REVIEW_DATA, TRAINEE_ID, null, null,
+        FUTURE, null);
+    Action action2 = new Action(ObjectId.get(), REVIEW_DATA, TRAINEE_ID, null, null,
+        FUTURE, null);
+    when(repository.deleteByTraineeIdAndTisReferenceInfoAndNotComplete(TRAINEE_ID, TIS_ID,
+        String.valueOf(PLACEMENT))).thenReturn(List.of(action1, action2));
+
     service.updateActions(Operation.DELETE, dto);
-    verify(repository).deleteByTraineeIdAndTisReferenceInfoAndNotComplete(TRAINEE_ID, TIS_ID,
-        String.valueOf(PLACEMENT));
-    verifyNoMoreInteractions(repository);
+    verify(eventPublishingService).publishActionDeleteEvent(action1);
+    verify(eventPublishingService).publishActionDeleteEvent(action2);
+    verify(repository, never()).insert(anyList());
   }
 
   @Test
   void shouldDeleteAnyExistingNotCompleteActionsWhenProgrammeMembershipOperationIsDelete() {
     ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, FUTURE);
 
+    Action action1 = new Action(ObjectId.get(), REVIEW_DATA, TRAINEE_ID, null, null,
+        FUTURE, null);
+    Action action2 = new Action(ObjectId.get(), REVIEW_DATA, TRAINEE_ID, null, null,
+        FUTURE, null);
+    when(repository.deleteByTraineeIdAndTisReferenceInfoAndNotComplete(TRAINEE_ID, TIS_ID,
+        String.valueOf(PROGRAMME_MEMBERSHIP))).thenReturn(List.of(action1, action2));
+
     service.updateActions(Operation.DELETE, dto);
-    verify(repository).deleteByTraineeIdAndTisReferenceInfoAndNotComplete(TRAINEE_ID, TIS_ID,
-        String.valueOf(PROGRAMME_MEMBERSHIP));
-    verifyNoMoreInteractions(repository);
+    verify(eventPublishingService).publishActionDeleteEvent(action1);
+    verify(eventPublishingService).publishActionDeleteEvent(action2);
+    verify(repository, never()).insert(anyList());
   }
 
   @Test
@@ -326,6 +353,7 @@ class ActionServiceTest {
     assertThat("Unexpected action count.", actions.size(), is(0));
     verify(repository).findByTraineeIdAndTisReferenceInfo(any(), any(), any());
     verifyNoMoreInteractions(repository);
+    verifyNoInteractions(eventPublishingService);
   }
 
   @Test
@@ -339,6 +367,8 @@ class ActionServiceTest {
 
     when(repository.findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
         String.valueOf(PLACEMENT))).thenReturn(List.of(existingAction));
+    when(repository.deleteByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
+        String.valueOf(PLACEMENT))).thenReturn(List.of(existingAction));
 
     List<ActionDto> actions = service.updateActions(Operation.LOAD, dto);
 
@@ -347,8 +377,10 @@ class ActionServiceTest {
         TRAINEE_ID, TIS_ID, PLACEMENT.toString());
     verify(repository).deleteByTraineeIdAndTisReferenceInfo(
         TRAINEE_ID, TIS_ID, PLACEMENT.toString());
+    verify(eventPublishingService).publishActionDeleteEvent(existingAction);
     verify(repository).insert(anyList());
     verifyNoMoreInteractions(repository);
+    verify(eventPublishingService).publishActionUpdateEvent(any());
   }
 
   @ParameterizedTest
@@ -377,6 +409,22 @@ class ActionServiceTest {
     TisReferenceInfo tisReference = action.tisReferenceInfo();
     assertThat("Unexpected TIS id.", tisReference.id(), is(TIS_ID));
     assertThat("Unexpected TIS type.", tisReference.type(), is(PLACEMENT));
+
+    // should broadcast inserted action
+    ArgumentCaptor<Action> actionCaptor = ArgumentCaptor.forClass(Action.class);
+    verify(eventPublishingService).publishActionUpdateEvent(actionCaptor.capture());
+
+    Action broadcastAction = actionCaptor.getValue();
+    assertThat("Unexpected action id.", broadcastAction.id(), nullValue());
+    assertThat("Unexpected action type.", broadcastAction.type(), is(REVIEW_DATA));
+    assertThat("Unexpected trainee id.", broadcastAction.traineeId(), is(TRAINEE_ID));
+    assertThat("Unexpected available from date.", broadcastAction.availableFrom(),
+        is(FUTURE.minusWeeks(12)));
+    assertThat("Unexpected due by date.", broadcastAction.dueBy(), is(FUTURE));
+    assertThat("Unexpected completed date.", broadcastAction.completed(), nullValue());
+    TisReferenceInfo refInfo = broadcastAction.tisReferenceInfo();
+    assertThat("Unexpected TIS id.", refInfo.id(), is(TIS_ID));
+    assertThat("Unexpected TIS type.", refInfo.type(), is(PLACEMENT));
   }
 
   static Stream<String> listPlacementTypes() {

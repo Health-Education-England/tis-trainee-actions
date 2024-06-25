@@ -19,6 +19,7 @@ gradlew bootRun
 
 | Name                              | Description                                             | Default   |
 |-----------------------------------|---------------------------------------------------------|-----------|
+| ACTION_EVENT_TOPIC                | The SNS topic to broadcast Action events.               |           |
 | AWS_ENDPOINT                      | The AWS endpoint to use, used for local dev. (Optional) |           |
 | AWS_XRAY_DAEMON_ADDRESS           | The AWS XRay daemon host. (Optional)                    |           |
 | ENVIRONMENT                       | The environment to log events against.                  | local     |

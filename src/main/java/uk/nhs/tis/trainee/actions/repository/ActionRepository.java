@@ -64,7 +64,7 @@ public interface ActionRepository extends MongoRepository<Action, ObjectId> {
       + "{'tisReferenceInfo.id': ?1}, "
       + "{'tisReferenceInfo.type': ?2}, "
       + "{'completed': null}]}")
-  Long deleteByTraineeIdAndTisReferenceInfoAndNotComplete(String traineeId, String tisId,
+  List<Action> deleteByTraineeIdAndTisReferenceInfoAndNotComplete(String traineeId, String tisId,
       String type);
 
   /**
@@ -77,7 +77,7 @@ public interface ActionRepository extends MongoRepository<Action, ObjectId> {
   @DeleteQuery(value = "{$and : [{'traineeId': ?0}, "
       + "{'tisReferenceInfo.id': ?1}, "
       + "{'tisReferenceInfo.type': ?2}]}")
-  Long deleteByTraineeIdAndTisReferenceInfo(String traineeId, String tisId, String type);
+  List<Action> deleteByTraineeIdAndTisReferenceInfo(String traineeId, String tisId, String type);
 
   /**
    * Find specific TIS entity action(s) for a trainee.
