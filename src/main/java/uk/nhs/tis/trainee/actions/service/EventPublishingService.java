@@ -79,12 +79,12 @@ public class EventPublishingService {
    */
   private void publishActionBroadcastEvent(ActionBroadcastDto action) {
     String actionId = action.id();
-    log.info("Publishing event for action {}", actionId);
+    log.info("Publishing {} event for action {}", action.status(), actionId);
 
     SnsNotification<ActionBroadcastDto> message = SnsNotification.builder(action)
         .groupId(actionId)
         .build();
     snsTemplate.sendNotification(topicArn.toString(), message);
-    log.info("Published event for action {} to topic {}", actionId, topicArn);
+    log.info("Published {} event for action {} to topic {}", action.status(), actionId, topicArn);
   }
 }
