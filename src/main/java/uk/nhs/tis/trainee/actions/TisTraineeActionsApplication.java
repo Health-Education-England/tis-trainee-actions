@@ -21,12 +21,14 @@
 
 package uk.nhs.tis.trainee.actions;
 
+import io.mongock.runner.springboot.EnableMongock;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 /**
  * An application for the management of trainee actions.
  */
+@EnableMongock
 @SpringBootApplication
 public class TisTraineeActionsApplication {
 

@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "uk.nhs.tis.trainee"
-version = "0.7.0"
+version = "0.8.0"
 
 configurations {
   compileOnly {
@@ -29,6 +29,7 @@ dependencyManagement {
 }
 
 val mapstructVersion = "1.5.5.Final"
+val mongockVersion = "5.4.0"
 val sentryVersion = "7.8.0"
 
 dependencies {
@@ -49,6 +50,10 @@ dependencies {
   // MapStruct
   implementation("org.mapstruct:mapstruct:$mapstructVersion")
   annotationProcessor("org.mapstruct:mapstruct-processor:$mapstructVersion")
+
+  // Mongock
+  implementation("io.mongock:mongock-springboot:${mongockVersion}")
+  implementation("io.mongock:mongodb-springdata-v4-driver:${mongockVersion}")
 
   // Sentry reporting
   implementation("io.sentry:sentry-spring-boot-starter-jakarta:$sentryVersion")
