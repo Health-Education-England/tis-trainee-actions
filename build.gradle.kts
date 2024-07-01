@@ -29,7 +29,7 @@ dependencyManagement {
 }
 
 val mapstructVersion = "1.5.5.Final"
-val mongockVersion = "5.4.0"
+val mongockVersion = "5.4.4"
 val sentryVersion = "7.8.0"
 
 dependencies {
