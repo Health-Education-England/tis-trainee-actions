@@ -30,6 +30,7 @@ import java.util.Objects;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import uk.nhs.tis.trainee.actions.dto.ActionDto;
 import uk.nhs.tis.trainee.actions.dto.PlacementDto;
@@ -52,15 +53,18 @@ public class ActionService {
   private final ActionRepository repository;
   private final ActionMapper mapper;
   private final EventPublishingService eventPublishingService;
+  private final LocalDate actionsEpoch;
 
   /**
    * The constructor of action service.
    */
   public ActionService(ActionRepository repository, ActionMapper mapper,
-                       EventPublishingService eventPublishingService) {
+                       EventPublishingService eventPublishingService,
+                       @Value("${application.actions-epoch}") LocalDate actionsEpoch) {
     this.repository = repository;
     this.mapper = mapper;
     this.eventPublishingService = eventPublishingService;
+    this.actionsEpoch = actionsEpoch;
   }
 
   /**
@@ -83,14 +87,24 @@ public class ActionService {
             action.traineeId(), action.tisReferenceInfo().id(),
             action.tisReferenceInfo().type().toString());
         if (existingActions.isEmpty()) {
-          actions.add(action);
+          if (dto.endDate().isAfter(actionsEpoch)) {
+            actions.add(action);
+          } else {
+            log.debug("Not adding action for placement {} ending {} before epoch {}",
+                dto.id(), dto.endDate(), actionsEpoch);
+          }
         } else {
           if (replaceUpdatedPlacementAction(existingActions, action, dto.id())) {
             List<Action> deletedActions = repository.deleteByTraineeIdAndTisReferenceInfo(
                 action.traineeId(), action.tisReferenceInfo().id(),
                 action.tisReferenceInfo().type().toString());
             deletedActions.stream().forEach(eventPublishingService::publishActionDeleteEvent);
-            actions.add(action);
+            if (dto.endDate().isAfter(actionsEpoch)) {
+              actions.add(action);
+            } else {
+              log.debug("Not replacing action for placement {} ending {} before epoch {}",
+                  dto.id(), dto.endDate(), actionsEpoch);
+            }
           }
         }
       } else {

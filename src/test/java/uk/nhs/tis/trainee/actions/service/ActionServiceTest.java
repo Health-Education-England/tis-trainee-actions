@@ -52,8 +52,10 @@ import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import uk.nhs.tis.trainee.actions.dto.ActionDto;
 import uk.nhs.tis.trainee.actions.dto.PlacementDto;
@@ -83,7 +85,8 @@ class ActionServiceTest {
   void setUp() {
     repository = mock(ActionRepository.class);
     eventPublishingService = mock(EventPublishingService.class);
-    service = new ActionService(repository, new ActionMapperImpl(), eventPublishingService);
+    service = new ActionService(repository, new ActionMapperImpl(), eventPublishingService,
+        NOW);
   }
 
   @Test
@@ -281,8 +284,8 @@ class ActionServiceTest {
   }
 
   @Test
-  void shouldInsertActionWhenPlacementOperationLoad() {
-    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, PLACEMENT_TYPE);
+  void shouldInsertActionWhenPlacementOperationLoadAndEndAfterEpoch() {
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, FUTURE, PLACEMENT_TYPE);
 
     when(repository.findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
         String.valueOf(PLACEMENT))).thenReturn(Collections.emptyList());
@@ -294,8 +297,24 @@ class ActionServiceTest {
   }
 
   @Test
-  void shouldNotInsertActionAndDeleteAnyExistingNotCompleteActionsWhenPlacementTypeIgnored() {
-    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, "ignored placement type");
+  void shouldNotInsertActionWhenPlacementOperationLoadAndEndNotAfterEpoch() {
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, PAST, PAST, PLACEMENT_TYPE);
+
+    when(repository.findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
+        String.valueOf(PLACEMENT))).thenReturn(Collections.emptyList());
+
+    service.updateActions(Operation.LOAD, dto);
+
+    verifyNoInteractions(eventPublishingService);
+    verify(repository, never()).insert(anyList());
+  }
+
+  @ParameterizedTest
+  @MethodSource("providePastAndFutureDates")
+  void shouldNotInsertActionAndDeleteAnyExistingNotCompleteActionsWhenPlacementTypeIgnored(
+      LocalDate theDate) {
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, theDate, theDate,
+        "ignored placement type");
 
     when(repository.deleteByTraineeIdAndTisReferenceInfoAndNotComplete(TRAINEE_ID, TIS_ID,
         String.valueOf(PLACEMENT))).thenReturn(Collections.emptyList());
@@ -305,9 +324,10 @@ class ActionServiceTest {
     verify(repository, never()).insert(anyList());
   }
 
-  @Test
-  void shouldDeleteAnyExistingNotCompleteActionsWhenPlacementOperationIsDelete() {
-    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, PLACEMENT_TYPE);
+  @ParameterizedTest
+  @MethodSource("providePastAndFutureDates")
+  void shouldDeleteAnyExistingNotCompleteActionsWhenPlacementOperationIsDelete(LocalDate theDate) {
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, theDate, theDate, PLACEMENT_TYPE);
 
     Action action1 = new Action(ObjectId.get(), REVIEW_DATA, TRAINEE_ID, null, null,
         FUTURE, null);
@@ -339,9 +359,10 @@ class ActionServiceTest {
     verify(repository, never()).insert(anyList());
   }
 
-  @Test
-  void shouldNotCreatePlacementActionIfOneAlreadyExistsWithSameDueDate() {
-    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, PLACEMENT_TYPE);
+  @ParameterizedTest
+  @MethodSource("providePastAndFutureDates")
+  void shouldNotCreatePlacementActionIfOneAlreadyExistsWithSameDueDate(LocalDate theDate) {
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, theDate, PLACEMENT_TYPE);
     Action existingAction =
         new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, new TisReferenceInfo(TIS_ID, PLACEMENT),
             PAST, FUTURE, null);
@@ -357,8 +378,8 @@ class ActionServiceTest {
   }
 
   @Test
-  void shouldReplacePlacementActionIfOneAlreadyExistsWithDifferentDueDate() {
-    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, PLACEMENT_TYPE);
+  void shouldReplacePlacementActionIfOneAlreadyExistsWithDifferentDueDateAndEndIsAfterEpoch() {
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, FUTURE, PLACEMENT_TYPE);
     Action existingAction =
         new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, new TisReferenceInfo(TIS_ID, PLACEMENT),
             PAST, FUTURE.minusDays(1), Instant.now());
@@ -383,10 +404,34 @@ class ActionServiceTest {
     verify(eventPublishingService).publishActionUpdateEvent(any());
   }
 
+  @Test
+  void shouldNotReplacePlacementActionIfOneAlreadyExistsWithDifferentDueDateAndEndIsNotAfterEpoch() {
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, PAST, PAST, PLACEMENT_TYPE);
+    Action existingAction =
+        new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, new TisReferenceInfo(TIS_ID, PLACEMENT),
+            PAST, FUTURE.minusDays(1), Instant.now());
+
+    when(repository.insert(anyIterable())).thenAnswer(inv -> inv.getArgument(0));
+
+    when(repository.findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
+        String.valueOf(PLACEMENT))).thenReturn(List.of(existingAction));
+    when(repository.deleteByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
+        String.valueOf(PLACEMENT))).thenReturn(List.of(existingAction));
+
+    List<ActionDto> actions = service.updateActions(Operation.LOAD, dto);
+
+    assertThat("Unexpected action count.", actions.size(), is(0));
+    verify(repository).findByTraineeIdAndTisReferenceInfo(any(), any(), any());
+    verify(repository).deleteByTraineeIdAndTisReferenceInfo(any(), any(), any());
+    verifyNoMoreInteractions(repository);
+    verify(eventPublishingService).publishActionDeleteEvent(existingAction);
+    verifyNoMoreInteractions(eventPublishingService);
+  }
+
   @ParameterizedTest
   @MethodSource("listPlacementTypes")
   void shouldInsertReviewDataActionOnPlacementCreate(String placementType) {
-    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, placementType);
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, FUTURE, placementType);
 
     when(repository.insert(anyIterable())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -429,5 +474,12 @@ class ActionServiceTest {
 
   static Stream<String> listPlacementTypes() {
     return PLACEMENT_TYPES_TO_ACT_ON.stream();
+  }
+
+  static Stream<Arguments> providePastAndFutureDates() {
+    return Stream.of(
+        Arguments.of(PAST),
+        Arguments.of(FUTURE)
+    );
   }
 }
