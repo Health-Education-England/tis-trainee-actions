@@ -122,22 +122,6 @@ public class ActionService {
   }
 
   /**
-   * Add action to list of actions if the placement ended after the beginning of the actions epoch.
-   *
-   * @param action  The action to process.
-   * @param dto     The placement DTO.
-   * @param actions The current list of actions.
-   */
-  private void addActionIfAfterEpoch(Action action, PlacementDto dto, List<Action> actions) {
-    if (dto.endDate().isAfter(actionsEpoch)) {
-      actions.add(action);
-    } else {
-      log.debug("Not adding action for placement {} ending {} before epoch {}",
-          dto.id(), dto.endDate(), actionsEpoch);
-    }
-  }
-
-  /**
    * Updates the actions associated with the given Operation and Programme Membership data.
    *
    * @param operation The operation that triggered the update.
@@ -173,6 +157,22 @@ public class ActionService {
     List<Action> actionInserted = repository.insert(actions);
     actionInserted.stream().forEach(eventPublishingService::publishActionUpdateEvent);
     return mapper.toDtos(actionInserted);
+  }
+
+  /**
+   * Add action to list of actions if the placement ended after the beginning of the actions epoch.
+   *
+   * @param action  The action to process.
+   * @param dto     The placement DTO.
+   * @param actions The current list of actions.
+   */
+  private void addActionIfAfterEpoch(Action action, PlacementDto dto, List<Action> actions) {
+    if (dto.endDate().isAfter(actionsEpoch)) {
+      actions.add(action);
+    } else {
+      log.debug("Not adding action for placement {} ending {} before epoch {}",
+          dto.id(), dto.endDate(), actionsEpoch);
+    }
   }
 
   /**

@@ -55,7 +55,8 @@ public class DeleteOldOutstandingActions {
    */
   public DeleteOldOutstandingActions(MongoTemplate mongoTemplate,
                                      EventPublishingService eventPublishingService,
-                                     @Value("${application.actions-epoch}") LocalDate actionsEpoch) {
+                                     @Value("${application.actions-epoch}")
+                                     LocalDate actionsEpoch) {
     this.mongoTemplate = mongoTemplate;
     this.eventPublishingService = eventPublishingService;
     this.actionsEpoch = actionsEpoch;
