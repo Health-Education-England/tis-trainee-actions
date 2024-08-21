@@ -21,6 +21,7 @@
 
 package uk.nhs.tis.trainee.actions.migration;
 
+import com.mongodb.client.result.DeleteResult;
 import io.mongock.api.annotations.ChangeUnit;
 import io.mongock.api.annotations.Execution;
 import io.mongock.api.annotations.RollbackExecution;
@@ -62,8 +63,9 @@ public class DeleteOldOutstandingActions {
         .and("completed").exists(false);
     Query query = Query.query(obsoleteActionsCriteria);
     List<Action> actions = mongoTemplate.find(query, Action.class);
-    actions.stream().forEach(eventPublishingService::publishActionDeleteEvent);
-    mongoTemplate.remove(query, Action.class);
+    actions.forEach(eventPublishingService::publishActionDeleteEvent);
+    DeleteResult deleted = mongoTemplate.remove(query, Action.class);
+    log.info("{} old outstanding actions deleted.", deleted.getDeletedCount());
   }
 
   /**
