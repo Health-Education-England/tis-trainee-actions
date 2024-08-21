@@ -55,7 +55,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import uk.nhs.tis.trainee.actions.dto.ActionDto;
 import uk.nhs.tis.trainee.actions.dto.PlacementDto;
@@ -367,7 +366,7 @@ class ActionServiceTest {
         new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, new TisReferenceInfo(TIS_ID, PLACEMENT),
             PAST, FUTURE, null);
     when(repository.findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
-            String.valueOf(PLACEMENT))).thenReturn(List.of(existingAction));
+        String.valueOf(PLACEMENT))).thenReturn(List.of(existingAction));
 
     List<ActionDto> actions = service.updateActions(Operation.LOAD, dto);
 
@@ -405,7 +404,7 @@ class ActionServiceTest {
   }
 
   @Test
-  void shouldNotReplacePlacementActionIfOneAlreadyExistsWithDifferentDueDateAndEndIsNotAfterEpoch() {
+  void shouldNotReplacePlacementActionIfOneAlreadyExistsWithDifferentDueDateAndEndNotAfterEpoch() {
     PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, PAST, PAST, PLACEMENT_TYPE);
     Action existingAction =
         new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, new TisReferenceInfo(TIS_ID, PLACEMENT),

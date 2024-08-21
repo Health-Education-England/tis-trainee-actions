@@ -46,9 +46,16 @@ public class DeleteOldOutstandingActions {
   private final EventPublishingService eventPublishingService;
   private final LocalDate actionsEpoch;
 
+  /**
+   * Initialise the migration.
+   *
+   * @param mongoTemplate          The mongo template to use.
+   * @param eventPublishingService The event publishing service to use.
+   * @param actionsEpoch           The actions epoch to use.
+   */
   public DeleteOldOutstandingActions(MongoTemplate mongoTemplate,
-                                  EventPublishingService eventPublishingService,
-                                  @Value("${application.actions-epoch}") LocalDate actionsEpoch) {
+                                     EventPublishingService eventPublishingService,
+                                     @Value("${application.actions-epoch}") LocalDate actionsEpoch) {
     this.mongoTemplate = mongoTemplate;
     this.eventPublishingService = eventPublishingService;
     this.actionsEpoch = actionsEpoch;

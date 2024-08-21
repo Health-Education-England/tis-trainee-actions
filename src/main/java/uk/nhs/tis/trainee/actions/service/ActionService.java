@@ -87,24 +87,14 @@ public class ActionService {
             action.traineeId(), action.tisReferenceInfo().id(),
             action.tisReferenceInfo().type().toString());
         if (existingActions.isEmpty()) {
-          if (dto.endDate().isAfter(actionsEpoch)) {
-            actions.add(action);
-          } else {
-            log.debug("Not adding action for placement {} ending {} before epoch {}",
-                dto.id(), dto.endDate(), actionsEpoch);
-          }
+          addActionIfAfterEpoch(action, dto, actions);
         } else {
           if (replaceUpdatedPlacementAction(existingActions, action, dto.id())) {
             List<Action> deletedActions = repository.deleteByTraineeIdAndTisReferenceInfo(
                 action.traineeId(), action.tisReferenceInfo().id(),
                 action.tisReferenceInfo().type().toString());
-            deletedActions.stream().forEach(eventPublishingService::publishActionDeleteEvent);
-            if (dto.endDate().isAfter(actionsEpoch)) {
-              actions.add(action);
-            } else {
-              log.debug("Not replacing action for placement {} ending {} before epoch {}",
-                  dto.id(), dto.endDate(), actionsEpoch);
-            }
+            deletedActions.forEach(eventPublishingService::publishActionDeleteEvent);
+            addActionIfAfterEpoch(action, dto, actions);
           }
         }
       } else {
@@ -129,6 +119,22 @@ public class ActionService {
     List<Action> actionInserted = repository.insert(actions);
     actionInserted.stream().forEach(eventPublishingService::publishActionUpdateEvent);
     return mapper.toDtos(actionInserted);
+  }
+
+  /**
+   * Add action to list of actions if the placement ended after the beginning of the actions epoch.
+   *
+   * @param action  The action to process.
+   * @param dto     The placement DTO.
+   * @param actions The current list of actions.
+   */
+  private void addActionIfAfterEpoch(Action action, PlacementDto dto, List<Action> actions) {
+    if (dto.endDate().isAfter(actionsEpoch)) {
+      actions.add(action);
+    } else {
+      log.debug("Not adding action for placement {} ending {} before epoch {}",
+          dto.id(), dto.endDate(), actionsEpoch);
+    }
   }
 
   /**
@@ -241,7 +247,7 @@ public class ActionService {
    * @return True if the actions should be replaced, otherwise false.
    */
   private boolean replaceUpdatedPlacementAction(List<Action> existingActions, Action action,
-      String placementId) {
+                                                String placementId) {
     Optional<Action> actionWithDifferentDueDate = existingActions.stream()
         .filter(a -> !a.dueBy().isEqual(action.dueBy()))
         .findAny();

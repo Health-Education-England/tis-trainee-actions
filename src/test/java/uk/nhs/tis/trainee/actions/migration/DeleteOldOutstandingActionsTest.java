@@ -89,10 +89,6 @@ class DeleteOldOutstandingActionsTest {
 
   @Test
   void shouldDeleteOldOutstandingActions() {
-    var obsoleteActionsCriteria = Criteria.where("availableFrom").lt(NOW)
-        .and("completed").exists(false);
-    Query expectedQuery = Query.query(obsoleteActionsCriteria);
-
     Action action1 = new Action(ACTION_ID_1, REVIEW_DATA, TRAINEE_ID,
         new Action.TisReferenceInfo(TIS_ID, PLACEMENT), PAST, FUTURE, null);
     Action action2 = new Action(ACTION_ID_2, REVIEW_DATA, TRAINEE_ID,
@@ -101,12 +97,18 @@ class DeleteOldOutstandingActionsTest {
     when(template.find(any(), eq(Action.class))).thenReturn(List.of(action1, action2));
     when(template.remove(any(), eq(Action.class))).thenReturn(deleted);
 
-    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.forClass(Query.class);
     migration.migrate();
 
     verify(eventPublishingService).publishActionDeleteEvent(action1);
     verify(eventPublishingService).publishActionDeleteEvent(action2);
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.forClass(Query.class);
     verify(template).remove(queryCaptor.capture(), eq(Action.class));
+
+    var obsoleteActionsCriteria = Criteria.where("availableFrom").lt(NOW)
+        .and("completed").exists(false);
+    Query expectedQuery = Query.query(obsoleteActionsCriteria);
+
     Query queryUsed = queryCaptor.getValue();
     assertThat("Unexpected query.", queryUsed, is(expectedQuery));
   }
