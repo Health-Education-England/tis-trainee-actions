@@ -52,9 +52,8 @@ class DeleteOldOutstandingActionsTest {
   private static final String TRAINEE_ID = UUID.randomUUID().toString();
   private static final ObjectId ACTION_ID_1 = ObjectId.get();
   private static final ObjectId ACTION_ID_2 = ObjectId.get();
-  private static final LocalDate NOW = LocalDate.now();
-  private static final LocalDate PAST = NOW.minusDays(1);
-  private static final LocalDate FUTURE = NOW.plusDays(1);
+  private static final LocalDate EPOCH = LocalDate.now();
+  private static final LocalDate PRE_EPOCH = EPOCH.minusDays(1);
   private DeleteOldOutstandingActions migration;
   private MongoTemplate template;
   private EventPublishingService eventPublishingService;
@@ -64,7 +63,7 @@ class DeleteOldOutstandingActionsTest {
   void setUp() {
     template = mock(MongoTemplate.class);
     eventPublishingService = mock(EventPublishingService.class);
-    migration = new DeleteOldOutstandingActions(template, eventPublishingService, NOW);
+    migration = new DeleteOldOutstandingActions(template, eventPublishingService, EPOCH);
 
     deleted = new DeleteResult() {
       @Override
@@ -90,9 +89,9 @@ class DeleteOldOutstandingActionsTest {
   @Test
   void shouldDeleteOldOutstandingActions() {
     Action action1 = new Action(ACTION_ID_1, REVIEW_DATA, TRAINEE_ID,
-        new Action.TisReferenceInfo(TIS_ID, PLACEMENT), PAST, FUTURE, null);
+        new Action.TisReferenceInfo(TIS_ID, PLACEMENT), LocalDate.MIN, PRE_EPOCH, null);
     Action action2 = new Action(ACTION_ID_2, REVIEW_DATA, TRAINEE_ID,
-        new Action.TisReferenceInfo(TIS_ID, PLACEMENT), PAST, FUTURE, null);
+        new Action.TisReferenceInfo(TIS_ID, PLACEMENT), LocalDate.MIN, PRE_EPOCH, null);
 
     when(template.find(any(), eq(Action.class))).thenReturn(List.of(action1, action2));
     when(template.remove(any(), eq(Action.class))).thenReturn(deleted);
@@ -105,7 +104,8 @@ class DeleteOldOutstandingActionsTest {
     ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.forClass(Query.class);
     verify(template).remove(queryCaptor.capture(), eq(Action.class));
 
-    var obsoleteActionsCriteria = Criteria.where("availableFrom").lt(NOW)
+    var obsoleteActionsCriteria = Criteria
+        .where("dueBy").lt(EPOCH)
         .and("completed").exists(false);
     Query expectedQuery = Query.query(obsoleteActionsCriteria);
 

@@ -87,14 +87,14 @@ public class ActionService {
             action.traineeId(), action.tisReferenceInfo().id(),
             action.tisReferenceInfo().type().toString());
         if (existingActions.isEmpty()) {
-          addActionIfAfterEpoch(action, dto, actions);
+          addActionIfDueAfterEpoch(action, actions);
         } else {
           if (replaceUpdatedPlacementAction(existingActions, action, dto.id())) {
             List<Action> deletedActions = repository.deleteByTraineeIdAndTisReferenceInfo(
                 action.traineeId(), action.tisReferenceInfo().id(),
                 action.tisReferenceInfo().type().toString());
             deletedActions.forEach(eventPublishingService::publishActionDeleteEvent);
-            addActionIfAfterEpoch(action, dto, actions);
+            addActionIfDueAfterEpoch(action, actions);
           }
         }
       } else {
@@ -134,14 +134,14 @@ public class ActionService {
     Action action = mapper.toAction(dto, REVIEW_DATA);
 
     if (Objects.equals(operation, Operation.LOAD)
-        && (dto.startDate().isAfter(LocalDate.now()))) {
+        && !(dto.startDate().isBefore(actionsEpoch))) {
       List<Action> existingActions = repository.findByTraineeIdAndTisReferenceInfo(
           action.traineeId(), action.tisReferenceInfo().id(),
           action.tisReferenceInfo().type().toString());
       if (existingActions.isEmpty()) {
         // only create action if it does not already exist
-        // and if the programme membership starts in the future
-        actions.add(action);
+        // and if the programme membership starts post-epoch
+        addActionIfDueAfterEpoch(action, actions);
       }
     } else if (Objects.equals(operation, Operation.DELETE)) {
       log.info("Programme membership {} is deleted", dto.id());
@@ -160,18 +160,18 @@ public class ActionService {
   }
 
   /**
-   * Add action to list of actions if the placement ended after the beginning of the actions epoch.
+   * Add action to list of actions if it is due after the actions epoch.
    *
    * @param action  The action to process.
-   * @param dto     The placement DTO.
    * @param actions The current list of actions.
    */
-  private void addActionIfAfterEpoch(Action action, PlacementDto dto, List<Action> actions) {
-    if (dto.endDate().isAfter(actionsEpoch)) {
+  private void addActionIfDueAfterEpoch(Action action, List<Action> actions) {
+    if (action.dueBy().isAfter(actionsEpoch)) {
       actions.add(action);
     } else {
-      log.debug("Not adding action for placement {} ending {} before epoch {}",
-          dto.id(), dto.endDate(), actionsEpoch);
+      log.debug("Not adding action for {} {} starting {} before epoch {}",
+          action.tisReferenceInfo().type(), action.tisReferenceInfo().id(), action.dueBy(),
+          actionsEpoch);
     }
   }
 

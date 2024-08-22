@@ -72,6 +72,9 @@ class ActionServiceTest {
   private static final String TRAINEE_ID = UUID.randomUUID().toString();
   private static final ObjectId ACTION_ID = ObjectId.get();
   private static final LocalDate NOW = LocalDate.now();
+  private static final LocalDate EPOCH = NOW.minusDays(10);
+  private static final LocalDate PRE_EPOCH = EPOCH.minusDays(1);
+  private static final LocalDate POST_EPOCH = EPOCH.plusDays(1);
   private static final LocalDate PAST = NOW.minusDays(1);
   private static final LocalDate FUTURE = NOW.plusDays(1);
   private static final String PLACEMENT_TYPE = "In Post";
@@ -85,12 +88,12 @@ class ActionServiceTest {
     repository = mock(ActionRepository.class);
     eventPublishingService = mock(EventPublishingService.class);
     service = new ActionService(repository, new ActionMapperImpl(), eventPublishingService,
-        NOW);
+        EPOCH);
   }
 
   @Test
-  void shouldInsertReviewDataActionOnFirstSightOfFutureProgrammeMembership() {
-    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, FUTURE);
+  void shouldInsertReviewDataActionOnFirstSightOfPostEpochProgrammeMembership() {
+    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, POST_EPOCH);
 
     when(repository.findByTraineeIdAndTisReferenceInfo(any(), any(), any()))
         .thenReturn(new ArrayList<>());
@@ -106,7 +109,7 @@ class ActionServiceTest {
     assertThat("Unexpected action type.", action.type(), is(REVIEW_DATA.toString()));
     assertThat("Unexpected trainee id.", action.traineeId(), is(TRAINEE_ID));
     assertThat("Unexpected available from date.", action.availableFrom(), is(NOW));
-    assertThat("Unexpected due by date.", action.dueBy(), is(FUTURE));
+    assertThat("Unexpected due by date.", action.dueBy(), is(POST_EPOCH));
     assertThat("Unexpected completed date.", action.completed(), nullValue());
 
     TisReferenceInfo tisReference = action.tisReferenceInfo();
@@ -117,8 +120,8 @@ class ActionServiceTest {
   }
 
   @Test
-  void shouldNotInsertReviewDataActionOnFirstSightOfPastProgrammeMembership() {
-    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, PAST);
+  void shouldNotInsertReviewDataActionOnFirstSightOfPreEpochProgrammeMembership() {
+    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, PRE_EPOCH);
 
     List<ActionDto> actions = service.updateActions(Operation.LOAD, dto);
 
@@ -128,13 +131,13 @@ class ActionServiceTest {
   }
 
   @Test
-  void shouldNotInsertReviewDataActionOnAlreadyActionedFutureProgrammeMembership() {
-    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, FUTURE);
+  void shouldNotInsertReviewDataActionOnAlreadyActionedPostEpochProgrammeMembership() {
+    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, POST_EPOCH);
 
     TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
     ObjectId objectId1 = ObjectId.get();
-    Action existingAction = new Action(objectId1, REVIEW_DATA, TRAINEE_ID, tisReference, PAST,
-        FUTURE, null);
+    Action existingAction = new Action(objectId1, REVIEW_DATA, TRAINEE_ID, tisReference, PRE_EPOCH,
+        POST_EPOCH, null);
     when(repository.findByTraineeIdAndTisReferenceInfo(any(), any(), any()))
         .thenReturn(List.of(existingAction));
 
@@ -163,10 +166,10 @@ class ActionServiceTest {
   void shouldReturnActionsWhenTraineeActionsFound(TisReferenceType tisType) {
     TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, tisType);
     ObjectId objectId1 = ObjectId.get();
-    Action action1 = new Action(objectId1, REVIEW_DATA, TRAINEE_ID, tisReference, PAST, FUTURE,
+    Action action1 = new Action(objectId1, REVIEW_DATA, TRAINEE_ID, tisReference, POST_EPOCH, FUTURE,
         null);
     ObjectId objectId2 = ObjectId.get();
-    Action action2 = new Action(objectId2, REVIEW_DATA, TRAINEE_ID, tisReference, PAST, FUTURE,
+    Action action2 = new Action(objectId2, REVIEW_DATA, TRAINEE_ID, tisReference, POST_EPOCH, FUTURE,
         null);
     List<Action> actions = List.of(action1, action2);
 
@@ -184,7 +187,7 @@ class ActionServiceTest {
     dtos.forEach(actDto -> {
       assertThat("Unexpected action type.", actDto.type(), is(REVIEW_DATA.toString()));
       assertThat("Unexpected trainee id.", actDto.traineeId(), is(TRAINEE_ID));
-      assertThat("Unexpected available from date.", actDto.availableFrom(), is(PAST));
+      assertThat("Unexpected available from date.", actDto.availableFrom(), is(POST_EPOCH));
       assertThat("Unexpected due by date.", actDto.dueBy(), is(FUTURE));
       assertThat("Unexpected completed date.", actDto.completed(), nullValue());
 
@@ -283,8 +286,8 @@ class ActionServiceTest {
   }
 
   @Test
-  void shouldInsertActionWhenPlacementOperationLoadAndEndAfterEpoch() {
-    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, FUTURE, PLACEMENT_TYPE);
+  void shouldInsertActionWhenPlacementOperationLoadAndPostEpoch() {
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, POST_EPOCH, FUTURE, PLACEMENT_TYPE);
 
     when(repository.findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
         String.valueOf(PLACEMENT))).thenReturn(Collections.emptyList());
@@ -296,8 +299,8 @@ class ActionServiceTest {
   }
 
   @Test
-  void shouldNotInsertActionWhenPlacementOperationLoadAndEndNotAfterEpoch() {
-    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, PAST, PAST, PLACEMENT_TYPE);
+  void shouldNotInsertActionWhenPlacementOperationLoadAndPreEpoch() {
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, PRE_EPOCH, FUTURE, PLACEMENT_TYPE);
 
     when(repository.findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
         String.valueOf(PLACEMENT))).thenReturn(Collections.emptyList());
@@ -308,11 +311,9 @@ class ActionServiceTest {
     verify(repository, never()).insert(anyList());
   }
 
-  @ParameterizedTest
-  @MethodSource("providePastAndFutureDates")
-  void shouldNotInsertActionAndDeleteAnyExistingNotCompleteActionsWhenPlacementTypeIgnored(
-      LocalDate theDate) {
-    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, theDate, theDate,
+  @Test
+  void shouldNotInsertActionAndDeleteAnyExistingNotCompleteActionsWhenPlacementTypeIgnored() {
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, POST_EPOCH, FUTURE,
         "ignored placement type");
 
     when(repository.deleteByTraineeIdAndTisReferenceInfoAndNotComplete(TRAINEE_ID, TIS_ID,
@@ -324,14 +325,14 @@ class ActionServiceTest {
   }
 
   @ParameterizedTest
-  @MethodSource("providePastAndFutureDates")
+  @MethodSource("providePreAndPostEpochDates")
   void shouldDeleteAnyExistingNotCompleteActionsWhenPlacementOperationIsDelete(LocalDate theDate) {
     PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, theDate, theDate, PLACEMENT_TYPE);
 
     Action action1 = new Action(ObjectId.get(), REVIEW_DATA, TRAINEE_ID, null, null,
-        FUTURE, null);
+        POST_EPOCH, null);
     Action action2 = new Action(ObjectId.get(), REVIEW_DATA, TRAINEE_ID, null, null,
-        FUTURE, null);
+        POST_EPOCH, null);
     when(repository.deleteByTraineeIdAndTisReferenceInfoAndNotComplete(TRAINEE_ID, TIS_ID,
         String.valueOf(PLACEMENT))).thenReturn(List.of(action1, action2));
 
@@ -341,14 +342,16 @@ class ActionServiceTest {
     verify(repository, never()).insert(anyList());
   }
 
-  @Test
-  void shouldDeleteAnyExistingNotCompleteActionsWhenProgrammeMembershipOperationIsDelete() {
-    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, FUTURE);
+  @ParameterizedTest
+  @MethodSource("providePreAndPostEpochDates")
+  void shouldDeleteAnyExistingNotCompleteActionsWhenProgrammeMembershipOperationIsDelete(
+      LocalDate theDate) {
+    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, theDate);
 
     Action action1 = new Action(ObjectId.get(), REVIEW_DATA, TRAINEE_ID, null, null,
-        FUTURE, null);
+        POST_EPOCH, null);
     Action action2 = new Action(ObjectId.get(), REVIEW_DATA, TRAINEE_ID, null, null,
-        FUTURE, null);
+        POST_EPOCH, null);
     when(repository.deleteByTraineeIdAndTisReferenceInfoAndNotComplete(TRAINEE_ID, TIS_ID,
         String.valueOf(PROGRAMME_MEMBERSHIP))).thenReturn(List.of(action1, action2));
 
@@ -358,13 +361,12 @@ class ActionServiceTest {
     verify(repository, never()).insert(anyList());
   }
 
-  @ParameterizedTest
-  @MethodSource("providePastAndFutureDates")
-  void shouldNotCreatePlacementActionIfOneAlreadyExistsWithSameDueDate(LocalDate theDate) {
-    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, theDate, PLACEMENT_TYPE);
+  @Test
+  void shouldNotCreatePlacementActionIfOneAlreadyExistsWithSameDueDate() {
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, POST_EPOCH, FUTURE, PLACEMENT_TYPE);
     Action existingAction =
         new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, new TisReferenceInfo(TIS_ID, PLACEMENT),
-            PAST, FUTURE, null);
+            PRE_EPOCH, POST_EPOCH, null);
     when(repository.findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
         String.valueOf(PLACEMENT))).thenReturn(List.of(existingAction));
 
@@ -377,11 +379,11 @@ class ActionServiceTest {
   }
 
   @Test
-  void shouldReplacePlacementActionIfOneAlreadyExistsWithDifferentDueDateAndEndIsAfterEpoch() {
-    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, FUTURE, PLACEMENT_TYPE);
+  void shouldReplacePlacementActionIfOneAlreadyExistsWithDifferentDueDateAndPostEpoch() {
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, POST_EPOCH, FUTURE, PLACEMENT_TYPE);
     Action existingAction =
         new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, new TisReferenceInfo(TIS_ID, PLACEMENT),
-            PAST, FUTURE.minusDays(1), Instant.now());
+            PRE_EPOCH, POST_EPOCH.minusDays(1), Instant.now());
 
     when(repository.insert(anyIterable())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -404,11 +406,11 @@ class ActionServiceTest {
   }
 
   @Test
-  void shouldNotReplacePlacementActionIfOneAlreadyExistsWithDifferentDueDateAndEndNotAfterEpoch() {
-    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, PAST, PAST, PLACEMENT_TYPE);
+  void shouldNotReplacePlacementActionIfOneAlreadyExistsWithDifferentDueDateAndPreEpoch() {
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, PRE_EPOCH, FUTURE, PLACEMENT_TYPE);
     Action existingAction =
         new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, new TisReferenceInfo(TIS_ID, PLACEMENT),
-            PAST, FUTURE.minusDays(1), Instant.now());
+            PRE_EPOCH, POST_EPOCH.minusDays(1), Instant.now());
 
     when(repository.insert(anyIterable())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -430,7 +432,7 @@ class ActionServiceTest {
   @ParameterizedTest
   @MethodSource("listPlacementTypes")
   void shouldInsertReviewDataActionOnPlacementCreate(String placementType) {
-    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, FUTURE, FUTURE, placementType);
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, POST_EPOCH, FUTURE, placementType);
 
     when(repository.insert(anyIterable())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -446,8 +448,8 @@ class ActionServiceTest {
     assertThat("Unexpected action type.", action.type(), is(REVIEW_DATA.toString()));
     assertThat("Unexpected trainee id.", action.traineeId(), is(TRAINEE_ID));
     assertThat("Unexpected available from date.", action.availableFrom(),
-        is(FUTURE.minusWeeks(12)));
-    assertThat("Unexpected due by date.", action.dueBy(), is(FUTURE));
+        is(POST_EPOCH.minusWeeks(12)));
+    assertThat("Unexpected due by date.", action.dueBy(), is(POST_EPOCH));
     assertThat("Unexpected completed date.", action.completed(), nullValue());
 
     TisReferenceInfo tisReference = action.tisReferenceInfo();
@@ -463,8 +465,8 @@ class ActionServiceTest {
     assertThat("Unexpected action type.", broadcastAction.type(), is(REVIEW_DATA));
     assertThat("Unexpected trainee id.", broadcastAction.traineeId(), is(TRAINEE_ID));
     assertThat("Unexpected available from date.", broadcastAction.availableFrom(),
-        is(FUTURE.minusWeeks(12)));
-    assertThat("Unexpected due by date.", broadcastAction.dueBy(), is(FUTURE));
+        is(POST_EPOCH.minusWeeks(12)));
+    assertThat("Unexpected due by date.", broadcastAction.dueBy(), is(POST_EPOCH));
     assertThat("Unexpected completed date.", broadcastAction.completed(), nullValue());
     TisReferenceInfo refInfo = broadcastAction.tisReferenceInfo();
     assertThat("Unexpected TIS id.", refInfo.id(), is(TIS_ID));
@@ -475,10 +477,10 @@ class ActionServiceTest {
     return PLACEMENT_TYPES_TO_ACT_ON.stream();
   }
 
-  static Stream<Arguments> providePastAndFutureDates() {
+  static Stream<Arguments> providePreAndPostEpochDates() {
     return Stream.of(
-        Arguments.of(PAST),
-        Arguments.of(FUTURE)
+        Arguments.of(PRE_EPOCH),
+        Arguments.of(POST_EPOCH)
     );
   }
 }

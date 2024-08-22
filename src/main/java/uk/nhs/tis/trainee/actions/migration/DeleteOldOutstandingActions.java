@@ -67,7 +67,8 @@ public class DeleteOldOutstandingActions {
    */
   @Execution
   public void migrate() {
-    var obsoleteActionsCriteria = Criteria.where("availableFrom").lt(actionsEpoch)
+    var obsoleteActionsCriteria = Criteria
+        .where("dueBy").lt(actionsEpoch)
         .and("completed").exists(false);
     Query query = Query.query(obsoleteActionsCriteria);
     List<Action> actions = mongoTemplate.find(query, Action.class);
