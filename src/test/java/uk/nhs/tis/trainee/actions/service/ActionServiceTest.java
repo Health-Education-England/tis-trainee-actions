@@ -286,7 +286,7 @@ class ActionServiceTest {
 
   @Test
   void shouldInsertActionWhenPlacementOperationLoadAndPostEpoch() {
-    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, ACTIONS_EPOCH, FUTURE, PLACEMENT_TYPE);
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, ACTIONS_EPOCH, PLACEMENT_TYPE);
 
     when(repository.findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
         String.valueOf(PLACEMENT))).thenReturn(Collections.emptyList());
@@ -299,7 +299,7 @@ class ActionServiceTest {
 
   @Test
   void shouldNotInsertActionWhenPlacementOperationLoadAndPreEpoch() {
-    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, PRE_EPOCH, FUTURE, PLACEMENT_TYPE);
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, PRE_EPOCH, PLACEMENT_TYPE);
 
     when(repository.findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
         String.valueOf(PLACEMENT))).thenReturn(Collections.emptyList());
@@ -312,8 +312,7 @@ class ActionServiceTest {
 
   @Test
   void shouldNotInsertActionAndDeleteAnyExistingNotCompleteActionsWhenPlacementTypeIgnored() {
-    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, POST_EPOCH, FUTURE,
-        "ignored placement type");
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, POST_EPOCH, "ignored placement type");
 
     when(repository.deleteByTraineeIdAndTisReferenceInfoAndNotComplete(TRAINEE_ID, TIS_ID,
         String.valueOf(PLACEMENT))).thenReturn(Collections.emptyList());
@@ -326,7 +325,7 @@ class ActionServiceTest {
   @ParameterizedTest
   @MethodSource("providePreAndPostEpochDates")
   void shouldDeleteAnyExistingNotCompleteActionsWhenPlacementOperationIsDelete(LocalDate theDate) {
-    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, theDate, theDate, PLACEMENT_TYPE);
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, theDate, PLACEMENT_TYPE);
 
     Action action1 = new Action(ObjectId.get(), REVIEW_DATA, TRAINEE_ID, null, null,
         POST_EPOCH, null);
@@ -362,7 +361,7 @@ class ActionServiceTest {
 
   @Test
   void shouldNotCreatePlacementActionIfOneAlreadyExistsWithSameDueDate() {
-    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, POST_EPOCH, FUTURE, PLACEMENT_TYPE);
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, POST_EPOCH, PLACEMENT_TYPE);
     Action existingAction =
         new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, new TisReferenceInfo(TIS_ID, PLACEMENT),
             PRE_EPOCH, POST_EPOCH, null);
@@ -379,7 +378,7 @@ class ActionServiceTest {
 
   @Test
   void shouldReplacePlacementActionIfOneAlreadyExistsWithDifferentDueDateAndPostEpoch() {
-    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, POST_EPOCH, FUTURE, PLACEMENT_TYPE);
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, POST_EPOCH, PLACEMENT_TYPE);
     Action existingAction =
         new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, new TisReferenceInfo(TIS_ID, PLACEMENT),
             PRE_EPOCH, POST_EPOCH.minusDays(1), Instant.now());
@@ -406,7 +405,7 @@ class ActionServiceTest {
 
   @Test
   void shouldNotReplacePlacementActionIfOneAlreadyExistsWithDifferentDueDateAndPreEpoch() {
-    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, PRE_EPOCH, FUTURE, PLACEMENT_TYPE);
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, PRE_EPOCH, PLACEMENT_TYPE);
     Action existingAction =
         new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, new TisReferenceInfo(TIS_ID, PLACEMENT),
             PRE_EPOCH, POST_EPOCH.minusDays(1), Instant.now());
@@ -431,7 +430,7 @@ class ActionServiceTest {
   @ParameterizedTest
   @MethodSource("listPlacementTypes")
   void shouldInsertReviewDataActionOnPlacementCreate(String placementType) {
-    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, POST_EPOCH, FUTURE, placementType);
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, POST_EPOCH, placementType);
 
     when(repository.insert(anyIterable())).thenAnswer(inv -> inv.getArgument(0));
 

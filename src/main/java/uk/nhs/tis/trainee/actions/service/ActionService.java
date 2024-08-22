@@ -244,7 +244,7 @@ public class ActionService {
    * @return True if the actions should be replaced, otherwise false.
    */
   private boolean replaceUpdatedPlacementAction(List<Action> existingActions, Action action,
-                                                String placementId) {
+      String placementId) {
     Optional<Action> actionWithDifferentDueDate = existingActions.stream()
         .filter(a -> !a.dueBy().isEqual(action.dueBy()))
         .findAny();
