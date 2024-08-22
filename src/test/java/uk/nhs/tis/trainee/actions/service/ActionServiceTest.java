@@ -165,11 +165,11 @@ class ActionServiceTest {
   void shouldReturnActionsWhenTraineeActionsFound(TisReferenceType tisType) {
     TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, tisType);
     ObjectId objectId1 = ObjectId.get();
-    Action action1 = new Action(objectId1, REVIEW_DATA, TRAINEE_ID, tisReference, POST_EPOCH, FUTURE,
-        null);
+    Action action1 = new Action(objectId1, REVIEW_DATA, TRAINEE_ID, tisReference, POST_EPOCH,
+        FUTURE, null);
     ObjectId objectId2 = ObjectId.get();
-    Action action2 = new Action(objectId2, REVIEW_DATA, TRAINEE_ID, tisReference, POST_EPOCH, FUTURE,
-        null);
+    Action action2 = new Action(objectId2, REVIEW_DATA, TRAINEE_ID, tisReference, POST_EPOCH,
+        FUTURE, null);
     List<Action> actions = List.of(action1, action2);
 
     when(repository.findAllByTraineeIdAndCompletedIsNullOrderByDueByAsc(TRAINEE_ID)).thenReturn(
@@ -277,7 +277,8 @@ class ActionServiceTest {
     assertThat("Unexpected trainee id.", actionDto.traineeId(), is(TRAINEE_ID));
     assertThat("Unexpected available from date.", actionDto.availableFrom(), is(PAST));
     assertThat("Unexpected due by date.", actionDto.dueBy(), is(FUTURE));
-    assertThat("Unexpected completed date.", actionDto.completed(), instanceOf(Instant.class));
+    assertThat("Unexpected completed date.", actionDto.completed(),
+        instanceOf(Instant.class));
 
     TisReferenceInfo refInfo = actionDto.tisReferenceInfo();
     assertThat("Unexpected TIS id.", refInfo.id(), is(TIS_ID));
