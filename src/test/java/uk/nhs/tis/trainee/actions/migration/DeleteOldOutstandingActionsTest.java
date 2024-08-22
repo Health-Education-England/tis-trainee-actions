@@ -32,6 +32,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.actions.model.ActionType.REVIEW_DATA;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PLACEMENT;
+import static uk.nhs.tis.trainee.actions.service.ActionService.ACTIONS_EPOCH;
 
 import com.mongodb.client.result.DeleteResult;
 import java.time.LocalDate;
@@ -52,8 +53,7 @@ class DeleteOldOutstandingActionsTest {
   private static final String TRAINEE_ID = UUID.randomUUID().toString();
   private static final ObjectId ACTION_ID_1 = ObjectId.get();
   private static final ObjectId ACTION_ID_2 = ObjectId.get();
-  private static final LocalDate EPOCH = LocalDate.now();
-  private static final LocalDate PRE_EPOCH = EPOCH.minusDays(1);
+  private static final LocalDate PRE_EPOCH = ACTIONS_EPOCH.minusDays(1);
   private DeleteOldOutstandingActions migration;
   private MongoTemplate template;
   private EventPublishingService eventPublishingService;
@@ -63,7 +63,7 @@ class DeleteOldOutstandingActionsTest {
   void setUp() {
     template = mock(MongoTemplate.class);
     eventPublishingService = mock(EventPublishingService.class);
-    migration = new DeleteOldOutstandingActions(template, eventPublishingService, EPOCH);
+    migration = new DeleteOldOutstandingActions(template, eventPublishingService);
 
     deleted = new DeleteResult() {
       @Override
@@ -105,7 +105,7 @@ class DeleteOldOutstandingActionsTest {
     verify(template).remove(queryCaptor.capture(), eq(Action.class));
 
     var obsoleteActionsCriteria = Criteria
-        .where("dueBy").lt(EPOCH)
+        .where("dueBy").lt(ACTIONS_EPOCH)
         .and("completed").exists(false);
     Query expectedQuery = Query.query(obsoleteActionsCriteria);
 

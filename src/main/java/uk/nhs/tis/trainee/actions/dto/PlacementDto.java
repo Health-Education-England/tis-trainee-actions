@@ -31,12 +31,10 @@ import java.time.LocalDate;
  * @param id            The placement ID.
  * @param traineeId     The trainee ID associated with the placement.
  * @param startDate     The placement start date.
- * @param endDate       The placement end date.
  * @param placementType The placement type.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record PlacementDto(@JsonAlias("tisId") String id, String traineeId,
-                           @JsonAlias("dateFrom") LocalDate startDate,
-                           @JsonAlias("dateTo") LocalDate endDate, String placementType) {
+                           @JsonAlias("dateFrom") LocalDate startDate, String placementType) {
 
 }

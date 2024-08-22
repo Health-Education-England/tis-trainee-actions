@@ -30,7 +30,6 @@ import java.util.Objects;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import uk.nhs.tis.trainee.actions.dto.ActionDto;
 import uk.nhs.tis.trainee.actions.dto.PlacementDto;
@@ -47,24 +46,22 @@ import uk.nhs.tis.trainee.actions.repository.ActionRepository;
 @Service
 public class ActionService {
 
+  public static final LocalDate ACTIONS_EPOCH = LocalDate.of(2024, 8, 1);
   public static final List<String> PLACEMENT_TYPES_TO_ACT_ON
       = List.of("In post", "In post - Acting up", "In Post - Extension");
 
   private final ActionRepository repository;
   private final ActionMapper mapper;
   private final EventPublishingService eventPublishingService;
-  private final LocalDate actionsEpoch;
 
   /**
    * The constructor of action service.
    */
   public ActionService(ActionRepository repository, ActionMapper mapper,
-                       EventPublishingService eventPublishingService,
-                       @Value("${application.actions-epoch}") LocalDate actionsEpoch) {
+                       EventPublishingService eventPublishingService) {
     this.repository = repository;
     this.mapper = mapper;
     this.eventPublishingService = eventPublishingService;
-    this.actionsEpoch = actionsEpoch;
   }
 
   /**
@@ -134,7 +131,7 @@ public class ActionService {
     Action action = mapper.toAction(dto, REVIEW_DATA);
 
     if (Objects.equals(operation, Operation.LOAD)
-        && !(dto.startDate().isBefore(actionsEpoch))) {
+        && !(dto.startDate().isBefore(ACTIONS_EPOCH))) {
       List<Action> existingActions = repository.findByTraineeIdAndTisReferenceInfo(
           action.traineeId(), action.tisReferenceInfo().id(),
           action.tisReferenceInfo().type().toString());
@@ -166,12 +163,12 @@ public class ActionService {
    * @param actions The current list of actions.
    */
   private void addActionIfDueAfterEpoch(Action action, List<Action> actions) {
-    if (action.dueBy().isAfter(actionsEpoch)) {
+    if (!action.dueBy().isBefore(ACTIONS_EPOCH)) {
       actions.add(action);
     } else {
       log.debug("Not adding action for {} {} starting {} before epoch {}",
           action.tisReferenceInfo().type(), action.tisReferenceInfo().id(), action.dueBy(),
-          actionsEpoch);
+          ACTIONS_EPOCH);
     }
   }
 

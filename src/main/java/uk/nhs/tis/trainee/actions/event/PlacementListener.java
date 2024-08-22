@@ -51,6 +51,7 @@ public class PlacementListener {
     Operation operation = event.getOperation();
     PlacementDto dto = event.getPlacement();
 
+
     if (operation != null && dto != null) {
       actionService.updateActions(operation, event.getPlacement());
     } else {

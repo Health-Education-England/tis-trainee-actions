@@ -21,14 +21,14 @@
 
 package uk.nhs.tis.trainee.actions.migration;
 
+import static uk.nhs.tis.trainee.actions.service.ActionService.ACTIONS_EPOCH;
+
 import com.mongodb.client.result.DeleteResult;
 import io.mongock.api.annotations.ChangeUnit;
 import io.mongock.api.annotations.Execution;
 import io.mongock.api.annotations.RollbackExecution;
-import java.time.LocalDate;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -44,22 +44,17 @@ public class DeleteOldOutstandingActions {
 
   private final MongoTemplate mongoTemplate;
   private final EventPublishingService eventPublishingService;
-  private final LocalDate actionsEpoch;
 
   /**
    * Initialise the migration.
    *
    * @param mongoTemplate          The mongo template to use.
    * @param eventPublishingService The event publishing service to use.
-   * @param actionsEpoch           The actions epoch to use.
    */
   public DeleteOldOutstandingActions(MongoTemplate mongoTemplate,
-                                     EventPublishingService eventPublishingService,
-                                     @Value("${application.actions-epoch}")
-                                     LocalDate actionsEpoch) {
+                                     EventPublishingService eventPublishingService) {
     this.mongoTemplate = mongoTemplate;
     this.eventPublishingService = eventPublishingService;
-    this.actionsEpoch = actionsEpoch;
   }
 
   /**
@@ -68,7 +63,7 @@ public class DeleteOldOutstandingActions {
   @Execution
   public void migrate() {
     var obsoleteActionsCriteria = Criteria
-        .where("dueBy").lt(actionsEpoch)
+        .where("dueBy").lt(ACTIONS_EPOCH)
         .and("completed").exists(false);
     Query query = Query.query(obsoleteActionsCriteria);
     List<Action> actions = mongoTemplate.find(query, Action.class);

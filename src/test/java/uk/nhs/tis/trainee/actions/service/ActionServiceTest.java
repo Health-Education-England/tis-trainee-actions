@@ -38,6 +38,7 @@ import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.actions.model.ActionType.REVIEW_DATA;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
+import static uk.nhs.tis.trainee.actions.service.ActionService.ACTIONS_EPOCH;
 import static uk.nhs.tis.trainee.actions.service.ActionService.PLACEMENT_TYPES_TO_ACT_ON;
 
 import java.time.Instant;
@@ -72,9 +73,8 @@ class ActionServiceTest {
   private static final String TRAINEE_ID = UUID.randomUUID().toString();
   private static final ObjectId ACTION_ID = ObjectId.get();
   private static final LocalDate NOW = LocalDate.now();
-  private static final LocalDate EPOCH = NOW.minusDays(10);
-  private static final LocalDate PRE_EPOCH = EPOCH.minusDays(1);
-  private static final LocalDate POST_EPOCH = EPOCH.plusDays(1);
+  private static final LocalDate PRE_EPOCH = ACTIONS_EPOCH.minusDays(1);
+  private static final LocalDate POST_EPOCH = ACTIONS_EPOCH.plusDays(1);
   private static final LocalDate PAST = NOW.minusDays(1);
   private static final LocalDate FUTURE = NOW.plusDays(1);
   private static final String PLACEMENT_TYPE = "In Post";
@@ -87,13 +87,12 @@ class ActionServiceTest {
   void setUp() {
     repository = mock(ActionRepository.class);
     eventPublishingService = mock(EventPublishingService.class);
-    service = new ActionService(repository, new ActionMapperImpl(), eventPublishingService,
-        EPOCH);
+    service = new ActionService(repository, new ActionMapperImpl(), eventPublishingService);
   }
 
   @Test
   void shouldInsertReviewDataActionOnFirstSightOfPostEpochProgrammeMembership() {
-    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, POST_EPOCH);
+    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, ACTIONS_EPOCH);
 
     when(repository.findByTraineeIdAndTisReferenceInfo(any(), any(), any()))
         .thenReturn(new ArrayList<>());
@@ -109,7 +108,7 @@ class ActionServiceTest {
     assertThat("Unexpected action type.", action.type(), is(REVIEW_DATA.toString()));
     assertThat("Unexpected trainee id.", action.traineeId(), is(TRAINEE_ID));
     assertThat("Unexpected available from date.", action.availableFrom(), is(NOW));
-    assertThat("Unexpected due by date.", action.dueBy(), is(POST_EPOCH));
+    assertThat("Unexpected due by date.", action.dueBy(), is(ACTIONS_EPOCH));
     assertThat("Unexpected completed date.", action.completed(), nullValue());
 
     TisReferenceInfo tisReference = action.tisReferenceInfo();
@@ -287,7 +286,7 @@ class ActionServiceTest {
 
   @Test
   void shouldInsertActionWhenPlacementOperationLoadAndPostEpoch() {
-    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, POST_EPOCH, FUTURE, PLACEMENT_TYPE);
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, ACTIONS_EPOCH, FUTURE, PLACEMENT_TYPE);
 
     when(repository.findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
         String.valueOf(PLACEMENT))).thenReturn(Collections.emptyList());
