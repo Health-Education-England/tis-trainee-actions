@@ -28,6 +28,7 @@ import io.mongock.api.annotations.ChangeUnit;
 import io.mongock.api.annotations.Execution;
 import io.mongock.api.annotations.RollbackExecution;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -67,9 +68,13 @@ public class DeleteOldOutstandingActions {
         .and("completed").exists(false);
     Query query = Query.query(obsoleteActionsCriteria);
     List<Action> actions = mongoTemplate.find(query, Action.class);
-    actions.forEach(eventPublishingService::publishActionDeleteEvent);
-    DeleteResult deleted = mongoTemplate.remove(query, Action.class);
-    log.info("{} old outstanding actions deleted.", deleted.getDeletedCount());
+    AtomicInteger count = new AtomicInteger();
+    actions.forEach(a -> {
+      eventPublishingService.publishActionDeleteEvent(a);
+      mongoTemplate.remove(a);
+      count.getAndIncrement();
+    });
+    log.info("{} old outstanding actions deleted.", count);
   }
 
   /**
