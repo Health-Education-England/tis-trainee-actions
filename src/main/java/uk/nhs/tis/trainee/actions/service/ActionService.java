@@ -46,6 +46,7 @@ import uk.nhs.tis.trainee.actions.repository.ActionRepository;
 @Service
 public class ActionService {
 
+  public static final LocalDate ACTIONS_EPOCH = LocalDate.of(2024, 8, 1);
   public static final List<String> PLACEMENT_TYPES_TO_ACT_ON
       = List.of("In post", "In post - Acting up", "In Post - Extension");
 
@@ -83,14 +84,14 @@ public class ActionService {
             action.traineeId(), action.tisReferenceInfo().id(),
             action.tisReferenceInfo().type().toString());
         if (existingActions.isEmpty()) {
-          actions.add(action);
+          addActionIfDueAfterEpoch(action, actions);
         } else {
           if (replaceUpdatedPlacementAction(existingActions, action, dto.id())) {
             List<Action> deletedActions = repository.deleteByTraineeIdAndTisReferenceInfo(
                 action.traineeId(), action.tisReferenceInfo().id(),
                 action.tisReferenceInfo().type().toString());
-            deletedActions.stream().forEach(eventPublishingService::publishActionDeleteEvent);
-            actions.add(action);
+            deletedActions.forEach(eventPublishingService::publishActionDeleteEvent);
+            addActionIfDueAfterEpoch(action, actions);
           }
         }
       } else {
@@ -130,14 +131,14 @@ public class ActionService {
     Action action = mapper.toAction(dto, REVIEW_DATA);
 
     if (Objects.equals(operation, Operation.LOAD)
-        && (dto.startDate().isAfter(LocalDate.now()))) {
+        && !(dto.startDate().isBefore(ACTIONS_EPOCH))) {
       List<Action> existingActions = repository.findByTraineeIdAndTisReferenceInfo(
           action.traineeId(), action.tisReferenceInfo().id(),
           action.tisReferenceInfo().type().toString());
       if (existingActions.isEmpty()) {
         // only create action if it does not already exist
-        // and if the programme membership starts in the future
-        actions.add(action);
+        // and if the programme membership starts post-epoch
+        addActionIfDueAfterEpoch(action, actions);
       }
     } else if (Objects.equals(operation, Operation.DELETE)) {
       log.info("Programme membership {} is deleted", dto.id());
@@ -153,6 +154,22 @@ public class ActionService {
     List<Action> actionInserted = repository.insert(actions);
     actionInserted.stream().forEach(eventPublishingService::publishActionUpdateEvent);
     return mapper.toDtos(actionInserted);
+  }
+
+  /**
+   * Add action to list of actions if it is due after the actions epoch.
+   *
+   * @param action  The action to process.
+   * @param actions The current list of actions.
+   */
+  private void addActionIfDueAfterEpoch(Action action, List<Action> actions) {
+    if (!action.dueBy().isBefore(ACTIONS_EPOCH)) {
+      actions.add(action);
+    } else {
+      log.debug("Not adding action for {} {} starting {} before epoch {}",
+          action.tisReferenceInfo().type(), action.tisReferenceInfo().id(), action.dueBy(),
+          ACTIONS_EPOCH);
+    }
   }
 
   /**
