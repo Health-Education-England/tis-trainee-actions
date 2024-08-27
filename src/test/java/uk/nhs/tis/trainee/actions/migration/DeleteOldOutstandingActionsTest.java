@@ -94,21 +94,21 @@ class DeleteOldOutstandingActionsTest {
         new Action.TisReferenceInfo(TIS_ID, PLACEMENT), LocalDate.MIN, PRE_EPOCH, null);
 
     when(template.find(any(), eq(Action.class))).thenReturn(List.of(action1, action2));
-    when(template.remove(any(), eq(Action.class))).thenReturn(deleted);
 
     migration.migrate();
 
     verify(eventPublishingService).publishActionDeleteEvent(action1);
     verify(eventPublishingService).publishActionDeleteEvent(action2);
-
-    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.forClass(Query.class);
-    verify(template).remove(queryCaptor.capture(), eq(Action.class));
+    verify(template).remove(action1);
+    verify(template).remove(action2);
 
     var obsoleteActionsCriteria = Criteria
         .where("dueBy").lt(ACTIONS_EPOCH)
         .and("completed").exists(false);
     Query expectedQuery = Query.query(obsoleteActionsCriteria);
 
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.forClass(Query.class);
+    verify(template).find(queryCaptor.capture(), eq(Action.class));
     Query queryUsed = queryCaptor.getValue();
     assertThat("Unexpected query.", queryUsed, is(expectedQuery));
   }
