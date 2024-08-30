@@ -28,11 +28,14 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import uk.nhs.tis.trainee.actions.dto.ActionBroadcastDto;
 import uk.nhs.tis.trainee.actions.dto.ActionDto;
+import uk.nhs.tis.trainee.actions.dto.ActionsTrackerDto;
 import uk.nhs.tis.trainee.actions.dto.PlacementDto;
 import uk.nhs.tis.trainee.actions.dto.ProgrammeMembershipDto;
 import uk.nhs.tis.trainee.actions.model.Action;
 import uk.nhs.tis.trainee.actions.model.Action.TisReferenceInfo;
 import uk.nhs.tis.trainee.actions.model.ActionType;
+import uk.nhs.tis.trainee.actions.model.TrackerState;
+import uk.nhs.tis.trainee.actions.model.Trackable;
 
 /**
  * A mapper to convert to and between Action data types.
@@ -102,7 +105,7 @@ public interface ActionMapper {
   /**
    * Create a CURRENT ActionBroadcastDto from an Action.
    *
-   * @param action  The Action to map from.
+   * @param action The Action to map from.
    * @return The ActionBroadcastDto.
    */
   @Mapping(target = "id", expression = "java(action.id().toString())")
@@ -114,7 +117,7 @@ public interface ActionMapper {
   /**
    * Create a DELETED ActionBroadcastDto from an Action.
    *
-   * @param action  The Action to map from.
+   * @param action The Action to map from.
    * @return The ActionBroadcastDto.
    */
   @Mapping(target = "id", expression = "java(action.id().toString())")
@@ -127,6 +130,18 @@ public interface ActionMapper {
   @Mapping(target = "status", constant = "DELETED")
   @Mapping(target = "statusDatetime", expression = "java(java.time.Instant.now())")
   ActionBroadcastDto toDeletedActionBroadcastDto(Action action);
+
+  /**
+   * Create an ActionsTrackerDto from an Action.
+   *
+   * @param action The Action to map from.
+   * @return The ActionsTrackerDto
+   */
+  @Mapping(target = "type", constant = "ACTION")
+  @Mapping(target = "trackable", expression = "java(getTrackableType(action))")
+  @Mapping(target = "state", expression = "java(getTrackableState(action))")
+  @Mapping(target = "date", source = "action.completed")
+  ActionsTrackerDto toActionsTrackerDto(Action action);
 
   /**
    * Map a Programme Membership to a TIS reference info object.
@@ -147,4 +162,33 @@ public interface ActionMapper {
   @Mapping(target = "id", source = "dto.id")
   @Mapping(target = "type", constant = "PLACEMENT")
   TisReferenceInfo map(PlacementDto dto);
+
+  /**
+   * Get the trackable type from an Action.
+   *
+   * @param action The action.
+   * @return The trackable type.
+   */
+  default Trackable getTrackableType(Action action) {
+    if (action.type() == ActionType.REVIEW_DATA) {
+      return switch (action.tisReferenceInfo().type()) {
+        case PROGRAMME_MEMBERSHIP -> Trackable.REVIEW_PROGRAMME_MEMBERSHIP;
+        case PLACEMENT -> Trackable.REVIEW_PLACEMENT;
+      };
+    }
+    return null;
+  }
+
+  /**
+   * Get the trackable state from an Action.
+   *
+   * @param action The action.
+   * @return The trackable state.
+   */
+  default TrackerState getTrackableState(Action action) {
+    if (action.completed() != null) {
+      return TrackerState.COMPLETED;
+    }
+    return TrackerState.INCOMPLETE;
+  }
 }

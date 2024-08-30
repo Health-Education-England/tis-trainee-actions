@@ -25,6 +25,7 @@ import static uk.nhs.tis.trainee.actions.model.ActionType.REVIEW_DATA;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -32,11 +33,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
 import org.springframework.stereotype.Service;
 import uk.nhs.tis.trainee.actions.dto.ActionDto;
+import uk.nhs.tis.trainee.actions.dto.ActionsTrackerDto;
 import uk.nhs.tis.trainee.actions.dto.PlacementDto;
 import uk.nhs.tis.trainee.actions.dto.ProgrammeMembershipDto;
 import uk.nhs.tis.trainee.actions.event.Operation;
 import uk.nhs.tis.trainee.actions.mapper.ActionMapper;
 import uk.nhs.tis.trainee.actions.model.Action;
+import uk.nhs.tis.trainee.actions.model.TisReferenceType;
 import uk.nhs.tis.trainee.actions.repository.ActionRepository;
 
 /**
@@ -259,5 +262,15 @@ public class ActionService {
           existingActions.size());
     }
     return false;
+  }
+
+  public List<ActionsTrackerDto> findTrackerOnboardingActions(String traineeId,
+                                                              String programmeMembershipUuid) {
+    List<ActionsTrackerDto> actionsTrackers = new ArrayList<>();
+
+    List<Action> actions = repository.findByTraineeIdAndTisReferenceInfo(
+        traineeId, programmeMembershipUuid, TisReferenceType.PROGRAMME_MEMBERSHIP.toString());
+    actions.forEach(a -> actionsTrackers.add(mapper.toActionsTrackerDto(a)));
+    return actionsTrackers;
   }
 }
