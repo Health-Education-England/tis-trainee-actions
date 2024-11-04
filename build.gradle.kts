@@ -30,7 +30,7 @@ dependencyManagement {
 
 val mapstructVersion = "1.5.5.Final"
 val mongockVersion = "5.4.0"
-val sentryVersion = "7.11.0"
+val sentryVersion = "7.16.0"
 
 dependencies {
   // Spring Boot starters
