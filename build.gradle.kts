@@ -1,16 +1,16 @@
 plugins {
   java
-  id("org.springframework.boot") version "3.3.0"
-  id("io.spring.dependency-management") version "1.1.4"
+  alias(libs.plugins.spring.boot)
+  alias(libs.plugins.spring.dependency.management)
 
   // Code quality plugins
   checkstyle
   jacoco
-  id("org.sonarqube") version "5.1.0.4882"
+  alias(libs.plugins.sonarqube)
 }
 
 group = "uk.nhs.tis.trainee"
-version = "0.9.1"
+version = "0.9.2"
 
 configurations {
   compileOnly {
@@ -24,13 +24,9 @@ repositories {
 
 dependencyManagement {
   imports {
-    mavenBom("io.awspring.cloud:spring-cloud-aws-dependencies:3.1.0")
+    mavenBom(libs.spring.cloud.dependencies.aws.get().toString())
   }
 }
-
-val mapstructVersion = "1.5.5.Final"
-val mongockVersion = "5.4.0"
-val sentryVersion = "7.11.0"
 
 dependencies {
   // Spring Boot starters
@@ -39,7 +35,7 @@ dependencies {
   implementation("org.springframework.boot:spring-boot-starter-web")
 
   // AWS
-  implementation("com.amazonaws:aws-xray-recorder-sdk-spring:2.16.0")
+  implementation(libs.aws.xray)
   implementation("io.awspring.cloud:spring-cloud-aws-starter-sns")
   implementation("io.awspring.cloud:spring-cloud-aws-starter-sqs")
 
@@ -48,16 +44,14 @@ dependencies {
   annotationProcessor("org.projectlombok:lombok")
 
   // MapStruct
-  implementation("org.mapstruct:mapstruct:$mapstructVersion")
-  annotationProcessor("org.mapstruct:mapstruct-processor:$mapstructVersion")
+  implementation(libs.mapstruct.core)
+  annotationProcessor(libs.mapstruct.processor)
 
   // Mongock
-  implementation("io.mongock:mongock-springboot:${mongockVersion}")
-  implementation("io.mongock:mongodb-springdata-v4-driver:${mongockVersion}")
+  implementation(libs.bundles.mongock)
 
   // Sentry reporting
-  implementation("io.sentry:sentry-spring-boot-starter-jakarta:$sentryVersion")
-  implementation("io.sentry:sentry-logback:$sentryVersion")
+  implementation(libs.bundles.sentry)
 }
 
 java {
@@ -98,7 +92,7 @@ testing {
 
     val test by getting(JvmTestSuite::class) {
       dependencies {
-        annotationProcessor("org.mapstruct:mapstruct-processor:$mapstructVersion")
+        annotationProcessor(libs.mapstruct.processor)
       }
     }
 
