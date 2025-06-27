@@ -22,6 +22,8 @@
 package uk.nhs.tis.trainee.actions.service;
 
 import static uk.nhs.tis.trainee.actions.model.ActionType.REVIEW_DATA;
+import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PLACEMENT;
+import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -37,6 +39,7 @@ import uk.nhs.tis.trainee.actions.dto.ProgrammeMembershipDto;
 import uk.nhs.tis.trainee.actions.event.Operation;
 import uk.nhs.tis.trainee.actions.mapper.ActionMapper;
 import uk.nhs.tis.trainee.actions.model.Action;
+import uk.nhs.tis.trainee.actions.model.ActionType;
 import uk.nhs.tis.trainee.actions.repository.ActionRepository;
 
 /**
@@ -75,25 +78,30 @@ public class ActionService {
     boolean deleteAction = false;
     List<Action> actions = new ArrayList<>();
 
-    Action action = mapper.toAction(dto, REVIEW_DATA);
-
     if (Objects.equals(operation, Operation.LOAD)) {
       if (PLACEMENT_TYPES_TO_ACT_ON.stream().anyMatch(dto.placementType()::equalsIgnoreCase)) {
-        //find if action already exists (there should only be at most one)
+
         List<Action> existingActions = repository.findByTraineeIdAndTisReferenceInfo(
-            action.traineeId(), action.tisReferenceInfo().id(),
-            action.tisReferenceInfo().type().toString());
-        if (existingActions.isEmpty()) {
-          addActionIfDueAfterEpoch(action, actions);
-        } else {
-          if (replaceUpdatedPlacementAction(existingActions, action, dto.id())) {
-            List<Action> deletedActions = repository.deleteByTraineeIdAndTisReferenceInfo(
-                action.traineeId(), action.tisReferenceInfo().id(),
-                action.tisReferenceInfo().type().toString());
-            deletedActions.forEach(eventPublishingService::publishActionDeleteEvent);
-            addActionIfDueAfterEpoch(action, actions);
+            dto.traineeId(), dto.id(), PLACEMENT.toString());
+
+        for (ActionType actionType : ActionType.getPlacementActionTypes()) {
+          Action newAction = mapper.toAction(dto, actionType);
+          if (existingActions.stream().noneMatch(a -> a.type().equals(actionType))) {
+            // only add action if it does not already exist
+            addActionIfDueAfterEpoch(newAction, actions);
+          } else {
+            if (replaceUpdatedPlacementAction(existingActions, newAction, dto.id())) {
+              List<Action> deletedActions
+                  = repository.deleteByTraineeIdAndTisReferenceInfoAndActionType(
+                  newAction.traineeId(), newAction.tisReferenceInfo().id(),
+                  newAction.tisReferenceInfo().type().toString(),
+                  newAction.type());
+              deletedActions.forEach(eventPublishingService::publishActionDeleteEvent);
+              addActionIfDueAfterEpoch(newAction, actions);
+            }
           }
         }
+
       } else {
         log.info("Placement {} of type {} is ignored", dto.id(), dto.placementType());
         deleteAction = true;
@@ -104,6 +112,7 @@ public class ActionService {
     }
 
     if (deleteAction) {
+      Action action = mapper.toAction(dto, REVIEW_DATA);
       deleteIncompleteActions(action);
     }
 
@@ -128,20 +137,25 @@ public class ActionService {
   public List<ActionDto> updateActions(Operation operation, ProgrammeMembershipDto dto) {
     List<Action> actions = new ArrayList<>();
 
-    Action action = mapper.toAction(dto, REVIEW_DATA);
-
     if (Objects.equals(operation, Operation.LOAD)
         && !(dto.startDate().isBefore(ACTIONS_EPOCH))) {
       List<Action> existingActions = repository.findByTraineeIdAndTisReferenceInfo(
-          action.traineeId(), action.tisReferenceInfo().id(),
-          action.tisReferenceInfo().type().toString());
-      if (existingActions.isEmpty()) {
-        // only create action if it does not already exist
-        // and if the programme membership starts post-epoch
-        addActionIfDueAfterEpoch(action, actions);
+          dto.traineeId(), dto.id(), PROGRAMME_MEMBERSHIP.toString());
+
+      for (ActionType actionType : ActionType.getProgrammeActionTypes()) {
+        Action newAction = mapper.toAction(dto, actionType);
+        if (existingActions.stream().noneMatch(a -> a.type().equals(actionType))) {
+          // only add action if it does not already exist
+          addActionIfDueAfterEpoch(newAction, actions);
+        } else {
+          log.info("Programme Membership {} already has action of type {}, skipping.",
+              dto.id(), actionType);
+        }
       }
+
     } else if (Objects.equals(operation, Operation.DELETE)) {
       log.info("Programme membership {} is deleted", dto.id());
+      Action action = mapper.toAction(dto, REVIEW_DATA);
       deleteIncompleteActions(action);
     }
 

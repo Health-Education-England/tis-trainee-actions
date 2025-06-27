@@ -83,6 +83,22 @@ public interface ActionMapper {
   Action toAction(ProgrammeMembershipDto dto, ActionType type);
 
   /**
+   * Create an action using a trainee ID and ActionType.
+   *
+   * @param traineeId The ID of the trainee the action is for.
+   * @param type      The type of action to be created.
+   * @return The created action.
+   */
+  @Mapping(target = "id", ignore = true)
+  @Mapping(target = "type")
+  @Mapping(target = "traineeId")
+  @Mapping(target = "tisReferenceInfo", ignore = true)
+  @Mapping(target = "availableFrom", expression = "java(java.time.LocalDate.now())")
+  @Mapping(target = "dueBy", ignore = true)
+  @Mapping(target = "completed", ignore = true)
+  Action toAction(String traineeId, ActionType type);
+
+  /**
    * Create an action using Placement data.
    *
    * @param dto  The Placement to retrieve data from.

@@ -21,9 +21,41 @@
 
 package uk.nhs.tis.trainee.actions.model;
 
+import java.util.EnumSet;
+import java.util.Set;
+import lombok.Getter;
+
 /**
  * The type category of the action to be performed.
  */
 public enum ActionType {
-  REVIEW_DATA
-}
+  REVIEW_DATA,
+  SIGN_COJ,
+  SIGN_FORM_R_PART_A,
+  SIGN_FORM_R_PART_B,
+  REGISTER_TSS;
+
+  /**
+   * The set of Programme action types.
+   */
+  @Getter
+  private static final Set<ActionType> programmeActionTypes = EnumSet.of(
+      REVIEW_DATA,
+      SIGN_COJ,
+      SIGN_FORM_R_PART_A,
+      SIGN_FORM_R_PART_B);
+
+  /**
+   * The set of Placement action types.
+   */
+  @Getter
+  private static final Set<ActionType> placementActionTypes = EnumSet.of(
+      REVIEW_DATA);
+
+  /**
+   * The set of Trainee action types.
+   */
+  @Getter
+  private static final Set<ActionType> traineeActionTypes = EnumSet.of(
+      REGISTER_TSS);
+  }
