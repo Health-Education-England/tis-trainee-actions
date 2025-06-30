@@ -21,7 +21,9 @@
 
 package uk.nhs.tis.trainee.actions.service;
 
+import static uk.nhs.tis.trainee.actions.model.ActionType.REGISTER_TSS;
 import static uk.nhs.tis.trainee.actions.model.ActionType.REVIEW_DATA;
+import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PERSON;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 
@@ -33,6 +35,7 @@ import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
 import org.springframework.stereotype.Service;
+import uk.nhs.tis.trainee.actions.dto.AccountConfirmedEvent;
 import uk.nhs.tis.trainee.actions.dto.ActionDto;
 import uk.nhs.tis.trainee.actions.dto.PlacementDto;
 import uk.nhs.tis.trainee.actions.dto.ProgrammeMembershipDto;
@@ -95,7 +98,7 @@ public class ActionService {
                   = repository.deleteByTraineeIdAndTisReferenceInfoAndActionType(
                   newAction.traineeId(), newAction.tisReferenceInfo().id(),
                   newAction.tisReferenceInfo().type().toString(),
-                  newAction.type());
+                  newAction.type().toString()); //completed actions are deleted here
               deletedActions.forEach(eventPublishingService::publishActionDeleteEvent);
               addActionIfDueAfterEpoch(newAction, actions);
             }
@@ -156,7 +159,7 @@ public class ActionService {
     } else if (Objects.equals(operation, Operation.DELETE)) {
       log.info("Programme membership {} is deleted", dto.id());
       Action action = mapper.toAction(dto, REVIEW_DATA);
-      deleteIncompleteActions(action);
+      deleteIncompleteActions(action); //will delete all actions for this programme membership
     }
 
     if (actions.isEmpty()) {
@@ -166,6 +169,50 @@ public class ActionService {
 
     log.info("Adding {} new action(s) for Programme Membership {}.", actions.size(), dto.id());
     List<Action> actionInserted = repository.insert(actions);
+    actionInserted.stream().forEach(eventPublishingService::publishActionUpdateEvent);
+    return mapper.toDtos(actionInserted);
+  }
+
+  /**
+   * Updates the actions associated with the given Operation and User account data.
+   *
+   * @param operation The operation that triggered the update.
+   * @param account   The Account confirmation event data associated with the operation.
+   * @return A list of updated actions, empty if no actions required.
+   */
+  public List<ActionDto> updateActions(Operation operation, AccountConfirmedEvent account) {
+    List<Action> actions = new ArrayList<>();
+
+    if (Objects.equals(operation, Operation.LOAD)) {
+      List<Action> existingActions = repository.findByTraineeIdAndTisReferenceInfo(
+          account.traineeId(), account.traineeId(), PERSON.toString());
+      for (ActionType actionType : ActionType.getPersonActionTypes()) {
+        Action newAction = mapper.toAction(account, actionType);
+        if (existingActions.stream().noneMatch(a -> a.type().equals(actionType))) {
+          // only add action if it does not already exist
+          actions.add(newAction);
+        } else {
+          log.info("Account for person {} already has action of type {}, skipping.",
+              account.traineeId(), actionType);
+        }
+      }
+    } else if (Objects.equals(operation, Operation.DELETE)) {
+      log.info("Account for person {} is deleted.", account.traineeId());
+      Action action = mapper.toAction(account, REGISTER_TSS);
+      deleteIncompleteActions(action);
+      //None will be deleted since these are all complete actions - is this correct?
+      //What if they register, deregister and then need to reregister?
+      //At present, only if incomplete confirmation actions are created by some other process will
+      //these be deleted.
+    }
+
+    if (actions.isEmpty()) {
+    log.info("No new actions required for Person account {}", account.traineeId());
+    return List.of();
+  }
+
+    log.info("Adding {} new action(s) for Person account {}.", actions.size(), account.traineeId());
+  List<Action> actionInserted = repository.insert(actions);
     actionInserted.stream().forEach(eventPublishingService::publishActionUpdateEvent);
     return mapper.toDtos(actionInserted);
   }
@@ -187,7 +234,7 @@ public class ActionService {
   }
 
   /**
-   * Delete any not-completed actions that match the given action item.
+   * Delete any not-completed actions (of any type) that match the given action item.
    *
    * @param likeAction The action to use to identify candidates for deletion.
    */
@@ -250,7 +297,8 @@ public class ActionService {
   }
 
   /**
-   * Determine whether a placement update means that its existing actions should be replaced.
+   * Determine whether a placement update means that its existing actions of given type should be
+   * replaced.
    *
    * @param existingActions The list of existing action for the placement.
    * @param action          The updated placement action.
@@ -259,18 +307,22 @@ public class ActionService {
    */
   private boolean replaceUpdatedPlacementAction(List<Action> existingActions, Action action,
       String placementId) {
-    Optional<Action> actionWithDifferentDueDate = existingActions.stream()
+    List<Action> actionsOfType = existingActions.stream()
+        .filter(a -> a.type().equals(action.type()))
+        .toList();
+    Optional<Action> actionWithDifferentDueDate = actionsOfType.stream()
         .filter(a -> !a.dueBy().isEqual(action.dueBy()))
         .findAny();
     if (actionWithDifferentDueDate.isPresent()) {
       //the saved action has a different placement start date, so replace it
-      log.info("Placement {} already has {} action(s), these are replaced and set to "
+      log.info("Placement {} already has {} {} action(s), these are replaced and set to "
               + "not completed as placement start date has changed from {} to {}", placementId,
-          existingActions.size(), actionWithDifferentDueDate.get().dueBy(), action.dueBy());
+          actionsOfType.size(), action.type(), actionWithDifferentDueDate.get().dueBy(),
+          action.dueBy());
       return true;
     } else {
-      log.info("Placement {} already has {} action(s), these are left as-is", placementId,
-          existingActions.size());
+      log.info("Placement {} already has {} {} action(s), these are left as-is", placementId,
+          actionsOfType.size(), action.type());
     }
     return false;
   }

@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2024 Crown Copyright (Health Education England)
+ * Copyright 2025 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -19,43 +19,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.actions.model;
+package uk.nhs.tis.trainee.actions.dto;
 
-import java.util.EnumSet;
-import java.util.Set;
-import lombok.Getter;
+import java.util.UUID;
 
 /**
- * The type category of the action to be performed.
+ * An event published when a user account is confirmed.
+ *
+ * @param userId    The user account ID.
+ * @param traineeId The linked trainee ID.
+ * @param email     The user account's email address.
  */
-public enum ActionType {
-  REVIEW_DATA,
-  SIGN_COJ,
-  SIGN_FORM_R_PART_A,
-  SIGN_FORM_R_PART_B,
-  REGISTER_TSS;
+public record AccountConfirmedEvent(UUID userId, String traineeId, String email) {
 
-  /**
-   * The set of Programme action types.
-   */
-  @Getter
-  private static final Set<ActionType> programmeActionTypes = EnumSet.of(
-      REVIEW_DATA,
-      SIGN_COJ,
-      SIGN_FORM_R_PART_A,
-      SIGN_FORM_R_PART_B);
-
-  /**
-   * The set of Placement action types.
-   */
-  @Getter
-  private static final Set<ActionType> placementActionTypes = EnumSet.of(
-      REVIEW_DATA);
-
-  /**
-   * The set of Person action types.
-   */
-  @Getter
-  private static final Set<ActionType> personActionTypes = EnumSet.of(
-      REGISTER_TSS);
-  }
+}

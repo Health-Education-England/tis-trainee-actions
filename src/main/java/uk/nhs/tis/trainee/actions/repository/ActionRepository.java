@@ -29,7 +29,6 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 import uk.nhs.tis.trainee.actions.model.Action;
-import uk.nhs.tis.trainee.actions.model.ActionType;
 
 /**
  * A repository of trainee actions.
@@ -81,7 +80,7 @@ public interface ActionRepository extends MongoRepository<Action, ObjectId> {
   List<Action> deleteByTraineeIdAndTisReferenceInfo(String traineeId, String tisId, String type);
 
   /**
-   * Delete specific TIS entity action(s) for a trainee.
+   * Delete specific TIS entity action(s) for a trainee where these are not complete.
    *
    * @param traineeId  The trainee ID.
    * @param tisId      The TIS ID of the entity.
@@ -92,8 +91,8 @@ public interface ActionRepository extends MongoRepository<Action, ObjectId> {
       + "{'tisReferenceInfo.id': ?1}, "
       + "{'tisReferenceInfo.type': ?2}, "
       + "{'type': ?3}]}")
-  List<Action> deleteByTraineeIdAndTisReferenceInfoAndActionType(String traineeId, String tisId,
-      String type, ActionType actionType);
+  List<Action> deleteByTraineeIdAndTisReferenceInfoAndActionType(String traineeId,
+      String tisId, String type, String actionType);
 
   /**
    * Find specific TIS entity action(s) for a trainee.

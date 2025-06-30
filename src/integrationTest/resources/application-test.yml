@@ -1,7 +1,10 @@
 application:
   queues:
+    account-confirmed: dummy
     placement-synced: dummy
     programme-membership-synced: dummy
+  sns:
+    arn: dummy.fifo
 
 spring:
   cloud:

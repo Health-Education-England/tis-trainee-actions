@@ -23,11 +23,13 @@ package uk.nhs.tis.trainee.actions.service;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyIterable;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -35,7 +37,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static uk.nhs.tis.trainee.actions.model.ActionType.REGISTER_TSS;
 import static uk.nhs.tis.trainee.actions.model.ActionType.REVIEW_DATA;
+import static uk.nhs.tis.trainee.actions.model.ActionType.SIGN_COJ;
+import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PERSON;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.actions.service.ActionService.ACTIONS_EPOCH;
@@ -57,6 +62,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
+import uk.nhs.tis.trainee.actions.dto.AccountConfirmedEvent;
 import uk.nhs.tis.trainee.actions.dto.ActionDto;
 import uk.nhs.tis.trainee.actions.dto.PlacementDto;
 import uk.nhs.tis.trainee.actions.dto.ProgrammeMembershipDto;
@@ -64,6 +70,7 @@ import uk.nhs.tis.trainee.actions.event.Operation;
 import uk.nhs.tis.trainee.actions.mapper.ActionMapperImpl;
 import uk.nhs.tis.trainee.actions.model.Action;
 import uk.nhs.tis.trainee.actions.model.Action.TisReferenceInfo;
+import uk.nhs.tis.trainee.actions.model.ActionType;
 import uk.nhs.tis.trainee.actions.model.TisReferenceType;
 import uk.nhs.tis.trainee.actions.repository.ActionRepository;
 
@@ -91,35 +98,63 @@ class ActionServiceTest {
   }
 
   @Test
-  void shouldInsertReviewDataActionOnFirstSightOfPostEpochProgrammeMembership() {
+  void shouldInsertAllActionsOnFirstSightOfPostEpochProgrammeMembership() {
     ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, ACTIONS_EPOCH);
 
     when(repository.findByTraineeIdAndTisReferenceInfo(any(), any(), any()))
         .thenReturn(new ArrayList<>());
-
     when(repository.insert(anyIterable())).thenAnswer(inv -> inv.getArgument(0));
 
     List<ActionDto> actions = service.updateActions(Operation.LOAD, dto);
 
-    assertThat("Unexpected action count.", actions.size(), is(1));
+    int expectedActionCount = ActionType.getProgrammeActionTypes().size();
+    assertThat("Unexpected action count.", actions.size(), is(expectedActionCount));
 
-    ActionDto action = actions.get(0);
-    assertThat("Unexpected action id.", action.id(), nullValue());
-    assertThat("Unexpected action type.", action.type(), is(REVIEW_DATA.toString()));
-    assertThat("Unexpected trainee id.", action.traineeId(), is(TRAINEE_ID));
-    assertThat("Unexpected available from date.", action.availableFrom(), is(NOW));
-    assertThat("Unexpected due by date.", action.dueBy(), is(ACTIONS_EPOCH));
-    assertThat("Unexpected completed date.", action.completed(), nullValue());
+    // should broadcast inserted action
+    ArgumentCaptor<Action> actionCaptor = ArgumentCaptor.forClass(Action.class);
+    verify(eventPublishingService, times(expectedActionCount))
+        .publishActionUpdateEvent(actionCaptor.capture());
+    List<Action> actionsPublished = actionCaptor.getAllValues();
 
-    TisReferenceInfo tisReference = action.tisReferenceInfo();
-    assertThat("Unexpected TIS id.", tisReference.id(), is(TIS_ID));
-    assertThat("Unexpected TIS type.", tisReference.type(), is(PROGRAMME_MEMBERSHIP));
+    for (ActionType actionType : ActionType.getProgrammeActionTypes()) {
+      ActionDto action = actions.stream()
+          .filter(a -> a.type().equals(actionType.toString()))
+          .findFirst()
+          .orElseThrow(() -> new AssertionError("Missing action for type: " + actionType));
 
-    verify(eventPublishingService, times(1)).publishActionUpdateEvent(any());
+      assertThat("Unexpected action id.", action.id(), nullValue());
+      assertThat("Unexpected action type.", action.type(), is(actionType.toString()));
+      assertThat("Unexpected trainee id.", action.traineeId(), is(TRAINEE_ID));
+      assertThat("Unexpected available from date.", action.availableFrom(), is(NOW));
+      assertThat("Unexpected due by date.", action.dueBy(), is(ACTIONS_EPOCH));
+      assertThat("Unexpected completed date.", action.completed(), nullValue());
+
+      TisReferenceInfo tisReference = action.tisReferenceInfo();
+      assertThat("Unexpected TIS id.", tisReference.id(), is(TIS_ID));
+      assertThat("Unexpected TIS type.", tisReference.type(),
+          is(PROGRAMME_MEMBERSHIP));
+
+      Action actionPublished = actionsPublished.stream()
+          .filter(a -> a.type().equals(actionType))
+          .findFirst()
+          .orElseThrow(
+              () -> new AssertionError("Missing action published for type: " + actionType));
+
+      assertThat("Unexpected action id.", actionPublished.id(), nullValue());
+      assertThat("Unexpected action type.", actionPublished.type(), is(actionType));
+      assertThat("Unexpected trainee id.", actionPublished.traineeId(), is(TRAINEE_ID));
+      assertThat("Unexpected available from date.", actionPublished.availableFrom(),
+          is(NOW));
+      assertThat("Unexpected due by date.", actionPublished.dueBy(), is(ACTIONS_EPOCH));
+      assertThat("Unexpected completed date.", actionPublished.completed(), nullValue());
+      TisReferenceInfo refInfo = actionPublished.tisReferenceInfo();
+      assertThat("Unexpected TIS id.", refInfo.id(), is(TIS_ID));
+      assertThat("Unexpected TIS type.", refInfo.type(), is(PROGRAMME_MEMBERSHIP));
+    }
   }
 
   @Test
-  void shouldNotInsertReviewDataActionOnFirstSightOfPreEpochProgrammeMembership() {
+  void shouldNotInsertActionsOnFirstSightOfPreEpochProgrammeMembership() {
     ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, PRE_EPOCH);
 
     List<ActionDto> actions = service.updateActions(Operation.LOAD, dto);
@@ -130,15 +165,18 @@ class ActionServiceTest {
   }
 
   @Test
-  void shouldNotInsertReviewDataActionOnAlreadyActionedPostEpochProgrammeMembership() {
+  void shouldNotInsertActionsOnAlreadyActionedPostEpochProgrammeMembership() {
     ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, POST_EPOCH);
 
     TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
-    ObjectId objectId1 = ObjectId.get();
-    Action existingAction = new Action(objectId1, REVIEW_DATA, TRAINEE_ID, tisReference, PRE_EPOCH,
-        POST_EPOCH, null);
+    List<Action> existingActions = new ArrayList<>();
+    for (ActionType actionType : ActionType.getProgrammeActionTypes()) {
+      Action existingAction = new Action(ObjectId.get(), actionType, TRAINEE_ID, tisReference,
+          PRE_EPOCH, POST_EPOCH, null);
+      existingActions.add(existingAction);
+    }
     when(repository.findByTraineeIdAndTisReferenceInfo(any(), any(), any()))
-        .thenReturn(List.of(existingAction));
+        .thenReturn(existingActions);
 
     List<ActionDto> actions = service.updateActions(Operation.LOAD, dto);
 
@@ -286,7 +324,7 @@ class ActionServiceTest {
   }
 
   @Test
-  void shouldInsertActionWhenPlacementOperationLoadAndPostEpoch() {
+  void shouldInsertActionsWhenPlacementOperationLoadAndPostEpoch() {
     PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, ACTIONS_EPOCH, PLACEMENT_TYPE);
 
     when(repository.findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
@@ -299,7 +337,7 @@ class ActionServiceTest {
   }
 
   @Test
-  void shouldNotInsertActionWhenPlacementOperationLoadAndPreEpoch() {
+  void shouldNotInsertActionsWhenPlacementOperationLoadAndPreEpoch() {
     PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, PRE_EPOCH, PLACEMENT_TYPE);
 
     when(repository.findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
@@ -315,8 +353,8 @@ class ActionServiceTest {
   void shouldNotInsertActionAndDeleteAnyExistingNotCompleteActionsWhenPlacementTypeIgnored() {
     PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, POST_EPOCH, "ignored placement type");
 
-    when(repository.deleteByTraineeIdAndTisReferenceInfoAndNotComplete(TRAINEE_ID, TIS_ID,
-        String.valueOf(PLACEMENT))).thenReturn(Collections.emptyList());
+    when(repository.deleteByTraineeIdAndTisReferenceInfoAndActionType(eq(TRAINEE_ID),
+        eq(TIS_ID), eq(String.valueOf(PLACEMENT)), any())).thenReturn(Collections.emptyList());
 
     service.updateActions(Operation.LOAD, dto);
     verifyNoInteractions(eventPublishingService);
@@ -349,7 +387,7 @@ class ActionServiceTest {
 
     Action action1 = new Action(ObjectId.get(), REVIEW_DATA, TRAINEE_ID, null, null,
         POST_EPOCH, null);
-    Action action2 = new Action(ObjectId.get(), REVIEW_DATA, TRAINEE_ID, null, null,
+    Action action2 = new Action(ObjectId.get(), SIGN_COJ, TRAINEE_ID, null, null,
         POST_EPOCH, null);
     when(repository.deleteByTraineeIdAndTisReferenceInfoAndNotComplete(TRAINEE_ID, TIS_ID,
         String.valueOf(PROGRAMME_MEMBERSHIP))).thenReturn(List.of(action1, action2));
@@ -378,34 +416,53 @@ class ActionServiceTest {
   }
 
   @Test
-  void shouldReplacePlacementActionIfOneAlreadyExistsWithDifferentDueDateAndPostEpoch() {
+  void shouldReplacePlacementActionsIfTheyAlreadyExistsWithDifferentDueDateAndPostEpoch() {
     PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, POST_EPOCH, PLACEMENT_TYPE);
-    Action existingAction =
-        new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, new TisReferenceInfo(TIS_ID, PLACEMENT),
-            PRE_EPOCH, POST_EPOCH.minusDays(1), Instant.now());
+    List<Action> existingActions = new ArrayList<>();
+    for (ActionType actionType : ActionType.getPlacementActionTypes()) {
+      Action existingAction = new Action(ObjectId.get(), actionType, TRAINEE_ID,
+          new TisReferenceInfo(TIS_ID, PLACEMENT), PRE_EPOCH, POST_EPOCH.minusDays(1),
+          Instant.now());
+      existingActions.add(existingAction);
+      when(repository.deleteByTraineeIdAndTisReferenceInfoAndActionType(TRAINEE_ID,
+          TIS_ID, String.valueOf(PLACEMENT), String.valueOf(actionType)))
+          .thenReturn(Collections.singletonList(existingAction));
+    }
 
     when(repository.insert(anyIterable())).thenAnswer(inv -> inv.getArgument(0));
 
     when(repository.findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
-        String.valueOf(PLACEMENT))).thenReturn(List.of(existingAction));
-    when(repository.deleteByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
-        String.valueOf(PLACEMENT))).thenReturn(List.of(existingAction));
+        String.valueOf(PLACEMENT))).thenReturn(existingActions);
 
     List<ActionDto> actions = service.updateActions(Operation.LOAD, dto);
 
-    assertThat("Unexpected action count.", actions.size(), is(1));
-    verify(repository).findByTraineeIdAndTisReferenceInfo(
-        TRAINEE_ID, TIS_ID, PLACEMENT.toString());
-    verify(repository).deleteByTraineeIdAndTisReferenceInfo(
-        TRAINEE_ID, TIS_ID, PLACEMENT.toString());
-    verify(eventPublishingService).publishActionDeleteEvent(existingAction);
+    int expectedActionCount = ActionType.getPlacementActionTypes().size();
+    assertThat("Unexpected action count.", actions.size(), is(expectedActionCount));
+
+    verify(repository).findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID, PLACEMENT.toString());
+
+    for (ActionType actionType : ActionType.getPlacementActionTypes()) {
+      ActionDto actionOfType = actions.stream()
+          .filter(a -> a.type().equals(actionType.toString()))
+          .findFirst()
+          .orElseThrow(() -> new AssertionError("Missing action for type: " + actionType));
+
+      verify(repository).deleteByTraineeIdAndTisReferenceInfoAndActionType(
+          TRAINEE_ID, TIS_ID, PLACEMENT.toString(), actionType.toString());
+      ArgumentCaptor<Action> deletedActionCaptor = ArgumentCaptor.forClass(Action.class);
+      verify(eventPublishingService).publishActionDeleteEvent(deletedActionCaptor.capture());
+      Action deletedAction = deletedActionCaptor.getValue();
+      assertThat("Unexpected deleted action published.",
+          existingActions.contains(deletedAction), is(true));
+    }
+
     verify(repository).insert(anyList());
     verifyNoMoreInteractions(repository);
-    verify(eventPublishingService).publishActionUpdateEvent(any());
+    verify(eventPublishingService, times(expectedActionCount)).publishActionUpdateEvent(any());
   }
 
   @Test
-  void shouldNotReplacePlacementActionIfOneAlreadyExistsWithDifferentDueDateAndPreEpoch() {
+  void shouldNotReplacePlacementActionsIfOneAlreadyExistsWithDifferentDueDateAndPreEpoch() {
     PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, PRE_EPOCH, PLACEMENT_TYPE);
     Action existingAction =
         new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, new TisReferenceInfo(TIS_ID, PLACEMENT),
@@ -415,14 +472,15 @@ class ActionServiceTest {
 
     when(repository.findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
         String.valueOf(PLACEMENT))).thenReturn(List.of(existingAction));
-    when(repository.deleteByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
-        String.valueOf(PLACEMENT))).thenReturn(List.of(existingAction));
+    when(repository.deleteByTraineeIdAndTisReferenceInfoAndActionType(TRAINEE_ID, TIS_ID,
+        String.valueOf(PLACEMENT), String.valueOf(REVIEW_DATA))).thenReturn(List.of(existingAction));
 
     List<ActionDto> actions = service.updateActions(Operation.LOAD, dto);
 
     assertThat("Unexpected action count.", actions.size(), is(0));
     verify(repository).findByTraineeIdAndTisReferenceInfo(any(), any(), any());
-    verify(repository).deleteByTraineeIdAndTisReferenceInfo(any(), any(), any());
+    verify(repository).deleteByTraineeIdAndTisReferenceInfoAndActionType(any(), any(), any(),
+        any());
     verifyNoMoreInteractions(repository);
     verify(eventPublishingService).publishActionDeleteEvent(existingAction);
     verifyNoMoreInteractions(eventPublishingService);
@@ -430,7 +488,7 @@ class ActionServiceTest {
 
   @ParameterizedTest
   @MethodSource("listPlacementTypes")
-  void shouldInsertReviewDataActionOnPlacementCreate(String placementType) {
+  void shouldInsertActionsOnPlacementCreate(String placementType) {
     PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, POST_EPOCH, placementType);
 
     when(repository.insert(anyIterable())).thenAnswer(inv -> inv.getArgument(0));
@@ -440,36 +498,137 @@ class ActionServiceTest {
 
     List<ActionDto> actions = service.updateActions(Operation.LOAD, dto);
 
-    assertThat("Unexpected action count.", actions.size(), is(1));
+    int expectedActionCount = ActionType.getPlacementActionTypes().size();
+    assertThat("Unexpected action count.", actions.size(), is(expectedActionCount));
 
-    ActionDto action = actions.get(0);
-    assertThat("Unexpected action id.", action.id(), nullValue());
-    assertThat("Unexpected action type.", action.type(), is(REVIEW_DATA.toString()));
-    assertThat("Unexpected trainee id.", action.traineeId(), is(TRAINEE_ID));
-    assertThat("Unexpected available from date.", action.availableFrom(),
-        is(POST_EPOCH.minusWeeks(12)));
-    assertThat("Unexpected due by date.", action.dueBy(), is(POST_EPOCH));
-    assertThat("Unexpected completed date.", action.completed(), nullValue());
+    for (ActionType actionType : ActionType.getPlacementActionTypes()) {
+      ActionDto action = actions.stream()
+          .filter(a -> a.type().equals(actionType.toString()))
+          .findFirst()
+          .orElseThrow(() -> new AssertionError("Missing action for type: " + actionType));
 
-    TisReferenceInfo tisReference = action.tisReferenceInfo();
-    assertThat("Unexpected TIS id.", tisReference.id(), is(TIS_ID));
-    assertThat("Unexpected TIS type.", tisReference.type(), is(PLACEMENT));
+      assertThat("Unexpected action id.", action.id(), nullValue());
+      assertThat("Unexpected action type.", action.type(), is(actionType.toString()));
+      assertThat("Unexpected trainee id.", action.traineeId(), is(TRAINEE_ID));
+      assertThat("Unexpected available from date.", action.availableFrom(),
+          is(POST_EPOCH.minusWeeks(12)));
+      assertThat("Unexpected due by date.", action.dueBy(), is(POST_EPOCH));
+      assertThat("Unexpected completed date.", action.completed(), nullValue());
+
+      TisReferenceInfo tisReference = action.tisReferenceInfo();
+      assertThat("Unexpected TIS id.", tisReference.id(), is(TIS_ID));
+      assertThat("Unexpected TIS type.", tisReference.type(), is(PLACEMENT));
+
+      // should broadcast inserted action
+      ArgumentCaptor<Action> actionCaptor = ArgumentCaptor.forClass(Action.class);
+      verify(eventPublishingService).publishActionUpdateEvent(actionCaptor.capture());
+
+      Action broadcastAction = actionCaptor.getValue();
+      assertThat("Unexpected action id.", broadcastAction.id(), nullValue());
+      assertThat("Unexpected action type.", broadcastAction.type(), is(actionType));
+      assertThat("Unexpected trainee id.", broadcastAction.traineeId(), is(TRAINEE_ID));
+      assertThat("Unexpected available from date.", broadcastAction.availableFrom(),
+          is(POST_EPOCH.minusWeeks(12)));
+      assertThat("Unexpected due by date.", broadcastAction.dueBy(), is(POST_EPOCH));
+      assertThat("Unexpected completed date.", broadcastAction.completed(), nullValue());
+      TisReferenceInfo refInfo = broadcastAction.tisReferenceInfo();
+      assertThat("Unexpected TIS id.", refInfo.id(), is(TIS_ID));
+      assertThat("Unexpected TIS type.", refInfo.type(), is(PLACEMENT));
+    }
+  }
+
+  @Test
+  void shouldInsertAllActionsOnFirstSightOfAccountConfirmation() {
+    AccountConfirmedEvent event = new AccountConfirmedEvent(UUID.randomUUID(), TRAINEE_ID,
+        "some@email.test");
+
+    when(repository.findByTraineeIdAndTisReferenceInfo(any(), any(), any()))
+        .thenReturn(new ArrayList<>());
+    when(repository.insert(anyIterable())).thenAnswer(inv -> inv.getArgument(0));
+
+    List<ActionDto> actions = service.updateActions(Operation.LOAD, event);
+
+    int expectedActionCount = ActionType.getPersonActionTypes().size();
+    assertThat("Unexpected action count.", actions.size(), is(expectedActionCount));
 
     // should broadcast inserted action
     ArgumentCaptor<Action> actionCaptor = ArgumentCaptor.forClass(Action.class);
-    verify(eventPublishingService).publishActionUpdateEvent(actionCaptor.capture());
+    verify(eventPublishingService, times(expectedActionCount))
+        .publishActionUpdateEvent(actionCaptor.capture());
+    List<Action> actionsPublished = actionCaptor.getAllValues();
 
-    Action broadcastAction = actionCaptor.getValue();
-    assertThat("Unexpected action id.", broadcastAction.id(), nullValue());
-    assertThat("Unexpected action type.", broadcastAction.type(), is(REVIEW_DATA));
-    assertThat("Unexpected trainee id.", broadcastAction.traineeId(), is(TRAINEE_ID));
-    assertThat("Unexpected available from date.", broadcastAction.availableFrom(),
-        is(POST_EPOCH.minusWeeks(12)));
-    assertThat("Unexpected due by date.", broadcastAction.dueBy(), is(POST_EPOCH));
-    assertThat("Unexpected completed date.", broadcastAction.completed(), nullValue());
-    TisReferenceInfo refInfo = broadcastAction.tisReferenceInfo();
-    assertThat("Unexpected TIS id.", refInfo.id(), is(TIS_ID));
-    assertThat("Unexpected TIS type.", refInfo.type(), is(PLACEMENT));
+    for (ActionType actionType : ActionType.getPersonActionTypes()) {
+      ActionDto action = actions.stream()
+          .filter(a -> a.type().equals(actionType.toString()))
+          .findFirst()
+          .orElseThrow(() -> new AssertionError("Missing action for type: " + actionType));
+
+      assertThat("Unexpected action id.", action.id(), nullValue());
+      assertThat("Unexpected action type.", action.type(), is(actionType.toString()));
+      assertThat("Unexpected trainee id.", action.traineeId(), is(TRAINEE_ID));
+      assertThat("Unexpected available from date.", action.availableFrom(), nullValue());
+      assertThat("Unexpected due by date.", action.dueBy(), nullValue());
+      assertThat("Unexpected completed date.", action.completed(), notNullValue());
+
+      TisReferenceInfo tisReference = action.tisReferenceInfo();
+      assertThat("Unexpected TIS id.", tisReference.id(), is(TRAINEE_ID));
+      assertThat("Unexpected TIS type.", tisReference.type(), is(PERSON));
+
+      Action actionPublished = actionsPublished.stream()
+          .filter(a -> a.type().equals(actionType))
+          .findFirst()
+          .orElseThrow(
+              () -> new AssertionError("Missing action published for type: " + actionType));
+
+      assertThat("Unexpected action id.", actionPublished.id(), nullValue());
+      assertThat("Unexpected action type.", actionPublished.type(), is(actionType));
+      assertThat("Unexpected trainee id.", actionPublished.traineeId(), is(TRAINEE_ID));
+      assertThat("Unexpected available from date.", actionPublished.availableFrom(),
+          nullValue());
+      assertThat("Unexpected due by date.", actionPublished.dueBy(), nullValue());
+      assertThat("Unexpected completed date.", actionPublished.completed(), notNullValue());
+      TisReferenceInfo refInfo = actionPublished.tisReferenceInfo();
+      assertThat("Unexpected TIS id.", refInfo.id(), is(TRAINEE_ID));
+      assertThat("Unexpected TIS type.", refInfo.type(), is(PERSON));
+    }
+  }
+
+  @Test
+  void shouldNotInsertActionsOnAlreadyActionedAccountConfirmation() {
+    AccountConfirmedEvent event = new AccountConfirmedEvent(UUID.randomUUID(), TRAINEE_ID,
+        "some@email.test");
+
+    TisReferenceInfo tisReference = new TisReferenceInfo(TRAINEE_ID, PERSON);
+    List<Action> existingActions = new ArrayList<>();
+    for (ActionType actionType : ActionType.getPersonActionTypes()) {
+      Action existingAction = new Action(ObjectId.get(), actionType, TRAINEE_ID, tisReference,
+          null, null, Instant.now());
+      existingActions.add(existingAction);
+    }
+    when(repository.findByTraineeIdAndTisReferenceInfo(any(), any(), any()))
+        .thenReturn(existingActions);
+
+    List<ActionDto> actions = service.updateActions(Operation.LOAD, event);
+
+    assertThat("Unexpected action count.", actions.size(), is(0));
+    verify(repository).findByTraineeIdAndTisReferenceInfo(any(), any(), any());
+    verifyNoMoreInteractions(repository);
+    verifyNoMoreInteractions(eventPublishingService);
+  }
+
+  @Test
+  void shouldDeleteAnyExistingNotCompleteActionsWhenAccountConfirmationIsDelete() {
+    AccountConfirmedEvent event = new AccountConfirmedEvent(UUID.randomUUID(), TRAINEE_ID,
+        "some@email.test");
+
+    Action action1 = new Action(ObjectId.get(), REGISTER_TSS, TRAINEE_ID, null, null,
+        null, null);
+    when(repository.deleteByTraineeIdAndTisReferenceInfoAndNotComplete(TRAINEE_ID, TRAINEE_ID,
+        String.valueOf(PERSON))).thenReturn(List.of(action1));
+
+    service.updateActions(Operation.DELETE, event);
+    verify(eventPublishingService).publishActionDeleteEvent(action1);
+    verify(repository, never()).insert(anyList());
   }
 
   static Stream<String> listPlacementTypes() {
