@@ -417,7 +417,6 @@ class ActionServiceTest {
 
   @Test
   void shouldReplacePlacementActionsIfTheyAlreadyExistsWithDifferentDueDateAndPostEpoch() {
-    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, POST_EPOCH, PLACEMENT_TYPE);
     List<Action> existingActions = new ArrayList<>();
     for (ActionType actionType : ActionType.getPlacementActionTypes()) {
       Action existingAction = new Action(ObjectId.get(), actionType, TRAINEE_ID,
@@ -434,6 +433,7 @@ class ActionServiceTest {
     when(repository.findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
         String.valueOf(PLACEMENT))).thenReturn(existingActions);
 
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, POST_EPOCH, PLACEMENT_TYPE);
     List<ActionDto> actions = service.updateActions(Operation.LOAD, dto);
 
     int expectedActionCount = ActionType.getPlacementActionTypes().size();
@@ -473,7 +473,8 @@ class ActionServiceTest {
     when(repository.findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
         String.valueOf(PLACEMENT))).thenReturn(List.of(existingAction));
     when(repository.deleteByTraineeIdAndTisReferenceInfoAndActionType(TRAINEE_ID, TIS_ID,
-        String.valueOf(PLACEMENT), String.valueOf(REVIEW_DATA))).thenReturn(List.of(existingAction));
+        String.valueOf(PLACEMENT), String.valueOf(REVIEW_DATA)))
+        .thenReturn(List.of(existingAction));
 
     List<ActionDto> actions = service.updateActions(Operation.LOAD, dto);
 

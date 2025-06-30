@@ -22,11 +22,12 @@
 package uk.nhs.tis.trainee.actions.event;
 
 import static uk.nhs.tis.trainee.actions.event.Operation.LOAD;
+
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import uk.nhs.tis.trainee.actions.service.ActionService;
 import uk.nhs.tis.trainee.actions.dto.AccountConfirmedEvent;
+import uk.nhs.tis.trainee.actions.service.ActionService;
 
 /**
  * A listener for user account events.

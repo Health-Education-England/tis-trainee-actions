@@ -58,4 +58,4 @@ public enum ActionType {
   @Getter
   private static final Set<ActionType> personActionTypes = EnumSet.of(
       REGISTER_TSS);
-  }
+}

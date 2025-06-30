@@ -64,7 +64,7 @@ public class ActionService {
    * The constructor of action service.
    */
   public ActionService(ActionRepository repository, ActionMapper mapper,
-                       EventPublishingService eventPublishingService) {
+      EventPublishingService eventPublishingService) {
     this.repository = repository;
     this.mapper = mapper;
     this.eventPublishingService = eventPublishingService;
@@ -207,12 +207,12 @@ public class ActionService {
     }
 
     if (actions.isEmpty()) {
-    log.info("No new actions required for Person account {}", account.traineeId());
-    return List.of();
-  }
+      log.info("No new actions required for Person account {}", account.traineeId());
+      return List.of();
+    }
 
     log.info("Adding {} new action(s) for Person account {}.", actions.size(), account.traineeId());
-  List<Action> actionInserted = repository.insert(actions);
+    List<Action> actionInserted = repository.insert(actions);
     actionInserted.stream().forEach(eventPublishingService::publishActionUpdateEvent);
     return mapper.toDtos(actionInserted);
   }
