@@ -58,4 +58,11 @@ public enum ActionType {
   @Getter
   private static final Set<ActionType> personActionTypes = EnumSet.of(
       REGISTER_TSS);
+
+  /**
+   * The set of user-completable action types.
+   */
+  @Getter
+  private static final Set<ActionType> userCompletableActionTypes = EnumSet.of(
+      REVIEW_DATA);
 }

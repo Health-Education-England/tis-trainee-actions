@@ -106,7 +106,7 @@ public class ActionResource {
       return ResponseEntity.badRequest().build();
     }
 
-    Optional<ActionDto> action = service.complete(traineeId, actionId);
+    Optional<ActionDto> action = service.completeAsUser(traineeId, actionId);
     return ResponseEntity.of(action);
   }
 }

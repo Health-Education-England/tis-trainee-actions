@@ -272,13 +272,13 @@ public class ActionService {
   }
 
   /**
-   * Complete a trainee's action.
+   * Complete a trainee's action. It must be a user-completable action.
    *
    * @param traineeId The ID of the trainee who owns the action to be completed.
    * @param actionId  The ID of the action to complete.
    * @return The completed action, or empty if not found.
    */
-  public Optional<ActionDto> complete(String traineeId, String actionId) {
+  public Optional<ActionDto> completeAsUser(String traineeId, String actionId) {
     if (!ObjectId.isValid(actionId)) {
       log.info("Skipping action completion due to invalid id.");
       return Optional.empty();
@@ -296,6 +296,12 @@ public class ActionService {
 
     if (action.completed() != null) {
       log.info("Skipping action completion as the action was already complete.");
+      return Optional.empty();
+    }
+
+    if (!ActionType.getUserCompletableActionTypes().contains(action.type())) {
+      log.info("Skipping action completion as the action type {} is not user-completable.",
+          action.type());
       return Optional.empty();
     }
 

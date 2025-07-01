@@ -49,6 +49,7 @@ import static uk.nhs.tis.trainee.actions.service.ActionService.PLACEMENT_TYPES_T
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -236,7 +237,7 @@ class ActionServiceTest {
 
   @Test
   void shouldNotCompleteActionWhenActionIdInvalid() {
-    Optional<ActionDto> optionalAction = service.complete(TRAINEE_ID, "40");
+    Optional<ActionDto> optionalAction = service.completeAsUser(TRAINEE_ID, "40");
 
     assertThat("Unexpected action presence.", optionalAction.isPresent(), is(false));
     verifyNoInteractions(repository);
@@ -246,7 +247,7 @@ class ActionServiceTest {
   void shouldNotCompleteActionWhenActionNotFound() {
     when(repository.findByIdAndTraineeId(ACTION_ID, TRAINEE_ID)).thenReturn(Optional.empty());
 
-    Optional<ActionDto> optionalAction = service.complete(TRAINEE_ID, ACTION_ID.toString());
+    Optional<ActionDto> optionalAction = service.completeAsUser(TRAINEE_ID, ACTION_ID.toString());
 
     assertThat("Unexpected action presence.", optionalAction.isPresent(), is(false));
     verify(repository, never()).save(any());
@@ -260,7 +261,22 @@ class ActionServiceTest {
         Instant.now());
     when(repository.findByIdAndTraineeId(ACTION_ID, TRAINEE_ID)).thenReturn(Optional.of(action));
 
-    Optional<ActionDto> optionalAction = service.complete(TRAINEE_ID, ACTION_ID.toString());
+    Optional<ActionDto> optionalAction = service.completeAsUser(TRAINEE_ID, ACTION_ID.toString());
+
+    assertThat("Unexpected action presence.", optionalAction.isPresent(), is(false));
+    verify(repository, never()).save(any());
+    verifyNoInteractions(eventPublishingService);
+  }
+
+  @ParameterizedTest
+  @MethodSource("listNonUserCompletableActionTypes")
+  void shouldNotCompleteActionWhenActionNotUserCompletable(ActionType nonUserCompletableType) {
+    TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
+    Action action = new Action(ACTION_ID, nonUserCompletableType, TRAINEE_ID, tisReference, PAST,
+        FUTURE, null);
+    when(repository.findByIdAndTraineeId(ACTION_ID, TRAINEE_ID)).thenReturn(Optional.of(action));
+
+    Optional<ActionDto> optionalAction = service.completeAsUser(TRAINEE_ID, ACTION_ID.toString());
 
     assertThat("Unexpected action presence.", optionalAction.isPresent(), is(false));
     verify(repository, never()).save(any());
@@ -276,7 +292,7 @@ class ActionServiceTest {
     when(repository.findByIdAndTraineeId(ACTION_ID, TRAINEE_ID)).thenReturn(Optional.of(action));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-    service.complete(TRAINEE_ID, ACTION_ID.toString());
+    service.completeAsUser(TRAINEE_ID, ACTION_ID.toString());
 
     ArgumentCaptor<Action> actionCaptor = ArgumentCaptor.forClass(Action.class);
     verify(repository).save(actionCaptor.capture());
@@ -305,7 +321,7 @@ class ActionServiceTest {
     when(repository.findByIdAndTraineeId(ACTION_ID, TRAINEE_ID)).thenReturn(Optional.of(action));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-    Optional<ActionDto> optionalAction = service.complete(TRAINEE_ID, ACTION_ID.toString());
+    Optional<ActionDto> optionalAction = service.completeAsUser(TRAINEE_ID, ACTION_ID.toString());
 
     assertThat("Unexpected action presence.", optionalAction.isPresent(), is(true));
 
@@ -633,6 +649,11 @@ class ActionServiceTest {
 
   static Stream<String> listPlacementTypes() {
     return PLACEMENT_TYPES_TO_ACT_ON.stream();
+  }
+
+  static Stream<ActionType> listNonUserCompletableActionTypes() {
+    return Arrays.stream(ActionType.values())
+        .filter(a -> !ActionType.getUserCompletableActionTypes().contains(a));
   }
 
   static Stream<Arguments> providePreAndPostEpochDates() {
