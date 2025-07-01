@@ -135,7 +135,7 @@ public interface ActionMapper {
    * @return The ActionBroadcastDto.
    */
   @Mapping(target = "id", expression = "java(action.id().toString())")
-  @Mapping(target = "type", ignore = true)
+  @Mapping(target = "type", expression = "java(action.type().toString())")
   @Mapping(target = "traineeId", ignore = true)
   @Mapping(target = "tisReferenceInfo", ignore = true)
   @Mapping(target = "availableFrom", ignore = true)
