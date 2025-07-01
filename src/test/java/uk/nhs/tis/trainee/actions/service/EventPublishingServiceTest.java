@@ -231,7 +231,7 @@ class EventPublishingServiceTest {
     Action action = new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, tisReference, PAST, FUTURE,
         COMPLETED);
     ActionBroadcastDto actionBroadcastDto = new ActionBroadcastDto(ACTION_ID.toString(),
-        null, null, null, null, null,
+        REVIEW_DATA.toString(), null, null, null, null,
         null, ActionStatus.DELETED, Instant.now());
 
     when(actionMapper.toDeletedActionBroadcastDto(action)).thenReturn(actionBroadcastDto);
@@ -245,7 +245,7 @@ class EventPublishingServiceTest {
     SnsNotification<ActionBroadcastDto> message = messageCaptor.getValue();
     ActionBroadcastDto payload = message.getPayload();
     assertThat("Unexpected action id.", payload.id(), is(ACTION_ID_STRING));
-    assertThat("Unexpected action type.", payload.type(), nullValue());
+    assertThat("Unexpected action type.", payload.type(), is(REVIEW_DATA.toString()));
     assertThat("Unexpected trainee id.", payload.traineeId(), nullValue());
     assertThat("Unexpected reference info", payload.tisReferenceInfo(), nullValue());
     assertThat("Unexpected available from date.", payload.availableFrom(), nullValue());
