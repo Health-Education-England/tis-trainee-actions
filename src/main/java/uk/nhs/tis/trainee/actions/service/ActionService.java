@@ -169,7 +169,7 @@ public class ActionService {
     } else if (Objects.equals(operation, Operation.DELETE)) {
       log.info("Programme membership {} is deleted", dto.id());
       Action action = mapper.toAction(dto, REVIEW_DATA);
-      deleteIncompleteActions(action); //will delete all actions for this programme membership
+      deleteIncompleteActions(action);
     }
 
     if (actions.isEmpty()) {
