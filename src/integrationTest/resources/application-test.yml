@@ -6,6 +6,9 @@ application:
   sns:
     arn: dummy
 
+mongock:
+  enabled: false
+
 spring:
   cloud:
     aws:

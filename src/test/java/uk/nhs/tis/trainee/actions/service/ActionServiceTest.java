@@ -117,11 +117,11 @@ class ActionServiceTest {
     List<Action> actionsPublished = actionCaptor.getAllValues();
 
     for (ActionType actionType : ActionType.getProgrammeActionTypes()) {
-      ActionDto action = actions.stream()
+      Optional<ActionDto> actionOfType = actions.stream()
           .filter(a -> a.type().equals(actionType.toString()))
-          .findFirst()
-          .orElseThrow(() -> new AssertionError("Missing action for type: " + actionType));
-
+          .findFirst();
+      assertThat("Missing action for type: " + actionType, actionOfType.isPresent(), is(true));
+      ActionDto action = actionOfType.get();
       assertThat("Unexpected action id.", action.id(), nullValue());
       assertThat("Unexpected action type.", action.type(), is(actionType.toString()));
       assertThat("Unexpected trainee id.", action.traineeId(), is(TRAINEE_ID));
@@ -134,12 +134,12 @@ class ActionServiceTest {
       assertThat("Unexpected TIS type.", tisReference.type(),
           is(PROGRAMME_MEMBERSHIP));
 
-      Action actionPublished = actionsPublished.stream()
+      Optional<Action> actionPublishedOfType = actionsPublished.stream()
           .filter(a -> a.type().equals(actionType))
-          .findFirst()
-          .orElseThrow(
-              () -> new AssertionError("Missing action published for type: " + actionType));
-
+          .findFirst();
+      assertThat("Missing action for type: " + actionType, actionPublishedOfType.isPresent(),
+          is(true));
+      Action actionPublished = actionPublishedOfType.get();
       assertThat("Unexpected action id.", actionPublished.id(), nullValue());
       assertThat("Unexpected action type.", actionPublished.type(), is(actionType));
       assertThat("Unexpected trainee id.", actionPublished.traineeId(), is(TRAINEE_ID));
@@ -442,11 +442,10 @@ class ActionServiceTest {
     verify(repository).findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID, PLACEMENT.toString());
 
     for (ActionType actionType : ActionType.getPlacementActionTypes()) {
-      ActionDto actionOfType = actions.stream()
+      Optional<ActionDto> actionOfType = actions.stream()
           .filter(a -> a.type().equals(actionType.toString()))
-          .findFirst()
-          .orElseThrow(() -> new AssertionError("Missing action for type: " + actionType));
-
+          .findFirst();
+      assertThat("Missing action for type: " + actionType, actionOfType.isPresent(), is(true));
       verify(repository).deleteByTraineeIdAndTisReferenceInfoAndActionType(
           TRAINEE_ID, TIS_ID, PLACEMENT.toString(), actionType.toString());
       ArgumentCaptor<Action> deletedActionCaptor = ArgumentCaptor.forClass(Action.class);
@@ -503,11 +502,11 @@ class ActionServiceTest {
     assertThat("Unexpected action count.", actions.size(), is(expectedActionCount));
 
     for (ActionType actionType : ActionType.getPlacementActionTypes()) {
-      ActionDto action = actions.stream()
+      Optional<ActionDto> actionOfType = actions.stream()
           .filter(a -> a.type().equals(actionType.toString()))
-          .findFirst()
-          .orElseThrow(() -> new AssertionError("Missing action for type: " + actionType));
-
+          .findFirst();
+      assertThat("Missing action for type: " + actionType, actionOfType.isPresent(), is(true));
+      ActionDto action = actionOfType.get();
       assertThat("Unexpected action id.", action.id(), nullValue());
       assertThat("Unexpected action type.", action.type(), is(actionType.toString()));
       assertThat("Unexpected trainee id.", action.traineeId(), is(TRAINEE_ID));
@@ -559,11 +558,11 @@ class ActionServiceTest {
     List<Action> actionsPublished = actionCaptor.getAllValues();
 
     for (ActionType actionType : ActionType.getPersonActionTypes()) {
-      ActionDto action = actions.stream()
+      Optional<ActionDto> actionOfType = actions.stream()
           .filter(a -> a.type().equals(actionType.toString()))
-          .findFirst()
-          .orElseThrow(() -> new AssertionError("Missing action for type: " + actionType));
-
+          .findFirst();
+      assertThat("Missing action for type: " + actionType, actionOfType.isPresent(), is(true));
+      ActionDto action = actionOfType.get();
       assertThat("Unexpected action id.", action.id(), nullValue());
       assertThat("Unexpected action type.", action.type(), is(actionType.toString()));
       assertThat("Unexpected trainee id.", action.traineeId(), is(TRAINEE_ID));

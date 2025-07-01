@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2024 Crown Copyright (Health Education England)
+ * Copyright 2025 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -17,6 +17,7 @@
  * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
  * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
  */
 
 package uk.nhs.tis.trainee.actions.event;
@@ -27,8 +28,7 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.testcontainers.containers.localstack.LocalStackContainer.Service.SQS;
-import static uk.nhs.tis.trainee.actions.event.Operation.LOAD;
-import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
+import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PERSON;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -36,7 +36,6 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import io.awspring.cloud.sqs.operations.SqsTemplate;
 import java.io.IOException;
 import java.time.Duration;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -58,18 +57,18 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.tis.trainee.actions.DockerImageNames;
 import uk.nhs.tis.trainee.actions.model.Action;
-import uk.nhs.tis.trainee.actions.model.Action.TisReferenceInfo;
 import uk.nhs.tis.trainee.actions.model.ActionType;
 
+/**
+ * Integration tests for the {@link UserAccountListener}.
+ */
 @SpringBootTest
 @Testcontainers
-class ProgrammeMembershipListenerIntegrationTest {
+public class UserAccountListenerIntegrationTest {
+  private static final String TRAINEE_ID = UUID.randomUUID().toString();
+  private static final String EMAIL = "some@email.test";
 
-  private static final String PROGRAMME_MEMBERSHIP_ID = UUID.randomUUID().toString();
-  private static final LocalDate NOW = LocalDate.now();
-  private static final LocalDate START_DATE = NOW.plusDays(1);
-
-  private static final String PROGRAMME_MEMBERSHIP_SYNCED_QUEUE = UUID.randomUUID().toString();
+  private static final String ACCOUNT_CONFIRMED_QUEUE = UUID.randomUUID().toString();
 
   @Container
   @ServiceConnection
@@ -83,8 +82,8 @@ class ProgrammeMembershipListenerIntegrationTest {
 
   @DynamicPropertySource
   private static void overrideProperties(DynamicPropertyRegistry registry) {
-    registry.add("application.queues.programme-membership-synced",
-        () -> PROGRAMME_MEMBERSHIP_SYNCED_QUEUE);
+    registry.add("application.queues.account-confirmed",
+        () -> ACCOUNT_CONFIRMED_QUEUE);
 
     registry.add("spring.cloud.aws.region.static", localstack::getRegion);
     registry.add("spring.cloud.aws.credentials.access-key", localstack::getAccessKey);
@@ -97,7 +96,7 @@ class ProgrammeMembershipListenerIntegrationTest {
   @BeforeAll
   static void setUpBeforeAll() throws IOException, InterruptedException {
     localstack.execInContainer("awslocal sqs create-queue --queue-name",
-        PROGRAMME_MEMBERSHIP_SYNCED_QUEUE);
+        ACCOUNT_CONFIRMED_QUEUE);
   }
 
   @Autowired
@@ -112,27 +111,22 @@ class ProgrammeMembershipListenerIntegrationTest {
   }
 
   @Test
-  void shouldInsertAllActionsWhenProgrammeMembershipCreated() throws JsonProcessingException {
-    String traineeId = UUID.randomUUID().toString();
+  void shouldInsertAllActionsWhenAccountConfirmed() throws JsonProcessingException {
+    String userId = UUID.randomUUID().toString();
     String eventString = """
         {
-          "record": {
-            "data": {
-              "tisId": "%s",
-              "personId": "%s",
-              "startDate": "%s"
-            },
-            "operation": "%s"
-          }
-        }""".formatted(PROGRAMME_MEMBERSHIP_ID, traineeId, START_DATE, LOAD);
+          "userId": "%s",
+          "traineeId": "%s",
+          "email": "%s"
+        }""".formatted(userId, TRAINEE_ID, EMAIL);
 
     JsonNode eventJson = JsonMapper.builder()
         .build()
         .readTree(eventString);
 
-    sqsTemplate.send(PROGRAMME_MEMBERSHIP_SYNCED_QUEUE, eventJson);
+    sqsTemplate.send(ACCOUNT_CONFIRMED_QUEUE, eventJson);
 
-    Criteria criteria = Criteria.where("traineeId").is(traineeId);
+    Criteria criteria = Criteria.where("traineeId").is(TRAINEE_ID);
     Query query = Query.query(criteria);
     List<Action> actions = new ArrayList<>();
 
@@ -143,26 +137,27 @@ class ProgrammeMembershipListenerIntegrationTest {
         .untilAsserted(() -> {
           List<Action> found = mongoTemplate.find(query, Action.class);
           assertThat("Unexpected action count.", found.size(),
-              is(ActionType.getProgrammeActionTypes().size()));
+              is(ActionType.getPersonActionTypes().size()));
           actions.addAll(found);
         });
 
-    for (ActionType actionType : ActionType.getProgrammeActionTypes()) {
+    for (ActionType actionType : ActionType.getPersonActionTypes()) {
       Optional<Action> actionOptional = actions.stream()
           .filter(a -> a.type().equals(actionType))
           .findFirst();
+
       assertThat("Missing action for type: " + actionType, actionOptional.isPresent(), is(true));
       Action action = actionOptional.get();
       assertThat("Unexpected action id.", action.id(), notNullValue());
       assertThat("Unexpected action type.", action.type(), is(actionType));
-      assertThat("Unexpected trainee id.", action.traineeId(), is(traineeId));
-      assertThat("Unexpected available from date.", action.availableFrom(), is(NOW));
-      assertThat("Unexpected due by date.", action.dueBy(), is(START_DATE));
-      assertThat("Unexpected completed date.", action.completed(), nullValue());
+      assertThat("Unexpected trainee id.", action.traineeId(), is(TRAINEE_ID));
+      assertThat("Unexpected available from date.", action.availableFrom(), nullValue());
+      assertThat("Unexpected due by date.", action.dueBy(), nullValue());
+      assertThat("Unexpected completed date.", action.completed(), notNullValue());
 
-      TisReferenceInfo tisReference = action.tisReferenceInfo();
-      assertThat("Unexpected TIS id.", tisReference.id(), is(PROGRAMME_MEMBERSHIP_ID));
-      assertThat("Unexpected TIS type.", tisReference.type(), is(PROGRAMME_MEMBERSHIP));
+      Action.TisReferenceInfo tisReference = action.tisReferenceInfo();
+      assertThat("Unexpected TIS id.", tisReference.id(), is(TRAINEE_ID));
+      assertThat("Unexpected TIS type.", tisReference.type(), is(PERSON));
     }
   }
 }
