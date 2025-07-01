@@ -81,9 +81,14 @@ public class EventPublishingService {
     String actionId = action.id();
     log.info("Publishing {} event for action {}", action.status(), actionId);
 
-    SnsNotification<ActionBroadcastDto> message = SnsNotification.builder(action)
-        .groupId(actionId)
-        .build();
+    SnsNotification<ActionBroadcastDto> message;
+    if (topicArn.toString().endsWith(".fifo")) {
+      // Create a message group to ensure FIFO per unique object.
+      message = SnsNotification.builder(action).groupId(actionId).build();
+    } else {
+      // For non-FIFO topics, we can use the default group ID.
+      message = SnsNotification.builder(action).build();
+    }
     snsTemplate.sendNotification(topicArn.toString(), message);
     log.info("Published {} event for action {} to topic {}", action.status(), actionId, topicArn);
   }
