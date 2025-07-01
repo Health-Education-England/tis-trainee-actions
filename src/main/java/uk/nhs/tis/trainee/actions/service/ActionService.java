@@ -71,6 +71,34 @@ public class ActionService {
   }
 
   /**
+   * Add or update actions for a given Placement DTO.
+   * @param dto     The placement DTO.
+   * @param actions The list of actions to supplement with new or updated actions.
+   */
+  private void addOrUpdatePlacementAction(PlacementDto dto, List<Action> actions) {
+    List<Action> existingActions = repository.findByTraineeIdAndTisReferenceInfo(
+        dto.traineeId(), dto.id(), PLACEMENT.toString());
+
+    for (ActionType actionType : ActionType.getPlacementActionTypes()) {
+      Action newAction = mapper.toAction(dto, actionType);
+      if (existingActions.stream().noneMatch(a -> a.type().equals(actionType))) {
+        // only add action if it does not already exist
+        addActionIfDueAfterEpoch(newAction, actions);
+      } else {
+        if (replaceUpdatedPlacementAction(existingActions, newAction, dto.id())) {
+          List<Action> deletedActions
+              = repository.deleteByTraineeIdAndTisReferenceInfoAndActionType(
+              newAction.traineeId(), newAction.tisReferenceInfo().id(),
+              newAction.tisReferenceInfo().type().toString(),
+              newAction.type().toString()); //completed actions are deleted here
+          deletedActions.forEach(eventPublishingService::publishActionDeleteEvent);
+          addActionIfDueAfterEpoch(newAction, actions);
+        }
+      }
+    }
+  }
+
+  /**
    * Updates the actions associated with the given Operation and Placement data.
    *
    * @param operation The operation that triggered the update.
@@ -84,26 +112,7 @@ public class ActionService {
     if (Objects.equals(operation, Operation.LOAD)) {
       if (PLACEMENT_TYPES_TO_ACT_ON.stream().anyMatch(dto.placementType()::equalsIgnoreCase)) {
 
-        List<Action> existingActions = repository.findByTraineeIdAndTisReferenceInfo(
-            dto.traineeId(), dto.id(), PLACEMENT.toString());
-
-        for (ActionType actionType : ActionType.getPlacementActionTypes()) {
-          Action newAction = mapper.toAction(dto, actionType);
-          if (existingActions.stream().noneMatch(a -> a.type().equals(actionType))) {
-            // only add action if it does not already exist
-            addActionIfDueAfterEpoch(newAction, actions);
-          } else {
-            if (replaceUpdatedPlacementAction(existingActions, newAction, dto.id())) {
-              List<Action> deletedActions
-                  = repository.deleteByTraineeIdAndTisReferenceInfoAndActionType(
-                  newAction.traineeId(), newAction.tisReferenceInfo().id(),
-                  newAction.tisReferenceInfo().type().toString(),
-                  newAction.type().toString()); //completed actions are deleted here
-              deletedActions.forEach(eventPublishingService::publishActionDeleteEvent);
-              addActionIfDueAfterEpoch(newAction, actions);
-            }
-          }
-        }
+        addOrUpdatePlacementAction(dto, actions);
 
       } else {
         log.info("Placement {} of type {} is ignored", dto.id(), dto.placementType());
@@ -126,7 +135,7 @@ public class ActionService {
 
     log.info("Adding {} new action(s) for Placement {}.", actions.size(), dto.id());
     List<Action> actionInserted = repository.insert(actions);
-    actionInserted.stream().forEach(eventPublishingService::publishActionUpdateEvent);
+    actionInserted.forEach(eventPublishingService::publishActionUpdateEvent);
     return mapper.toDtos(actionInserted);
   }
 
@@ -169,7 +178,7 @@ public class ActionService {
 
     log.info("Adding {} new action(s) for Programme Membership {}.", actions.size(), dto.id());
     List<Action> actionInserted = repository.insert(actions);
-    actionInserted.stream().forEach(eventPublishingService::publishActionUpdateEvent);
+    actionInserted.forEach(eventPublishingService::publishActionUpdateEvent);
     return mapper.toDtos(actionInserted);
   }
 
@@ -213,7 +222,7 @@ public class ActionService {
 
     log.info("Adding {} new action(s) for Person account {}.", actions.size(), account.traineeId());
     List<Action> actionInserted = repository.insert(actions);
-    actionInserted.stream().forEach(eventPublishingService::publishActionUpdateEvent);
+    actionInserted.forEach(eventPublishingService::publishActionUpdateEvent);
     return mapper.toDtos(actionInserted);
   }
 
@@ -246,7 +255,7 @@ public class ActionService {
         likeAction.tisReferenceInfo().type().toString());
     log.info("{} obsolete not completed action(s) deleted for {} {}", deletedActions.size(),
         likeAction.tisReferenceInfo().type(), likeAction.tisReferenceInfo().id());
-    deletedActions.stream().forEach(eventPublishingService::publishActionDeleteEvent);
+    deletedActions.forEach(eventPublishingService::publishActionDeleteEvent);
   }
 
   /**

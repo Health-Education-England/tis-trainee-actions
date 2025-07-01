@@ -59,4 +59,14 @@ public record Action(
   public record TisReferenceInfo(@Field("id") String id, TisReferenceType type) {
 
   }
+
+  /**
+   * Create a new action with the specified type.
+   *
+   * @param type The new action type.
+   * @return A new Action instance with the specified type.
+   */
+  public Action withType(ActionType type) {
+    return new Action(id, type, traineeId, tisReferenceInfo, availableFrom, dueBy, completed);
+  }
 }
