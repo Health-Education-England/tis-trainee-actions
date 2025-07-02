@@ -26,6 +26,7 @@ import static org.mapstruct.MappingConstants.ComponentModel.SPRING;
 import java.util.List;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import uk.nhs.tis.trainee.actions.dto.AccountConfirmedEvent;
 import uk.nhs.tis.trainee.actions.dto.ActionBroadcastDto;
 import uk.nhs.tis.trainee.actions.dto.ActionDto;
 import uk.nhs.tis.trainee.actions.dto.PlacementDto;
@@ -83,6 +84,22 @@ public interface ActionMapper {
   Action toAction(ProgrammeMembershipDto dto, ActionType type);
 
   /**
+   * Create an action using an account event and ActionType.
+   *
+   * @param accountEvent The account event.
+   * @param type         The type of action to be created.
+   * @return The created action.
+   */
+  @Mapping(target = "id", ignore = true)
+  @Mapping(target = "type")
+  @Mapping(target = "traineeId", source = "accountEvent.traineeId")
+  @Mapping(target = "tisReferenceInfo", source = "accountEvent")
+  @Mapping(target = "availableFrom", ignore = true)
+  @Mapping(target = "dueBy", ignore = true)
+  @Mapping(target = "completed", expression = "java(java.time.Instant.now())")
+  Action toAction(AccountConfirmedEvent accountEvent, ActionType type);
+
+  /**
    * Create an action using Placement data.
    *
    * @param dto  The Placement to retrieve data from.
@@ -118,7 +135,7 @@ public interface ActionMapper {
    * @return The ActionBroadcastDto.
    */
   @Mapping(target = "id", expression = "java(action.id().toString())")
-  @Mapping(target = "type", ignore = true)
+  @Mapping(target = "type", expression = "java(action.type().toString())")
   @Mapping(target = "traineeId", ignore = true)
   @Mapping(target = "tisReferenceInfo", ignore = true)
   @Mapping(target = "availableFrom", ignore = true)
@@ -147,4 +164,14 @@ public interface ActionMapper {
   @Mapping(target = "id", source = "dto.id")
   @Mapping(target = "type", constant = "PLACEMENT")
   TisReferenceInfo map(PlacementDto dto);
+
+  /**
+   * Map an Account Event to a TIS reference info object.
+   *
+   * @param accountEvent The account event to map.
+   * @return A reference to the TIS core object.
+   */
+  @Mapping(target = "id", source = "accountEvent.traineeId")
+  @Mapping(target = "type", constant = "PERSON")
+  TisReferenceInfo map(AccountConfirmedEvent accountEvent);
 }

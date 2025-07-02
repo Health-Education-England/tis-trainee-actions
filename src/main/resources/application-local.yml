@@ -1,0 +1,22 @@
+application:
+  environment: local
+  queues:
+    account-confirmed: ${local.sqs-path}/tis-trainee-actions-local-account-confirmed
+    placement-synced: ${local.sqs-path}/tis-trainee-actions-local-placement-synced
+    programme-membership-synced: ${local.sqs-path}/tis-trainee-actions-local-programme-membership-synced
+  sns:
+    arn: arn:aws:sns:eu-west-2:${local.account-id}:tis-trainee-actions-event
+
+local:
+  account-id: "000000000000"
+  sqs-path: ${spring.cloud.aws.endpoint}/${local.account-id}
+
+spring:
+  cloud:
+    aws:
+      credentials:
+        access-key: ${local.account-id}
+        secret-key: ${local.account-id}
+      endpoint: http://${LOCALSTACK_HOST:localhost}:4566
+      region:
+        static: eu-west-2

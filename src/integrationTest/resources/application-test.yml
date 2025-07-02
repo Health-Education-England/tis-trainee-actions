@@ -1,7 +1,13 @@
 application:
   queues:
+    account-confirmed: dummy
     placement-synced: dummy
     programme-membership-synced: dummy
+  sns:
+    arn: dummy
+
+mongock:
+  enabled: false
 
 spring:
   cloud:

@@ -26,5 +26,6 @@ package uk.nhs.tis.trainee.actions.model;
  */
 public enum TisReferenceType {
   PLACEMENT,
-  PROGRAMME_MEMBERSHIP
+  PROGRAMME_MEMBERSHIP,
+  PERSON
 }

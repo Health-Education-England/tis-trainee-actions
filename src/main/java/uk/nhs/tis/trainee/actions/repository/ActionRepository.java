@@ -80,6 +80,21 @@ public interface ActionRepository extends MongoRepository<Action, ObjectId> {
   List<Action> deleteByTraineeIdAndTisReferenceInfo(String traineeId, String tisId, String type);
 
   /**
+   * Delete specific TIS entity action(s) for a trainee where these are not complete.
+   *
+   * @param traineeId  The trainee ID.
+   * @param tisId      The TIS ID of the entity.
+   * @param type       The entity type.
+   * @param actionType The action type to delete.
+   */
+  @DeleteQuery(value = "{$and : [{'traineeId': ?0}, "
+      + "{'tisReferenceInfo.id': ?1}, "
+      + "{'tisReferenceInfo.type': ?2}, "
+      + "{'type': ?3}]}")
+  List<Action> deleteByTraineeIdAndTisReferenceInfoAndActionType(String traineeId,
+      String tisId, String type, String actionType);
+
+  /**
    * Find specific TIS entity action(s) for a trainee.
    *
    * @param traineeId The trainee ID.

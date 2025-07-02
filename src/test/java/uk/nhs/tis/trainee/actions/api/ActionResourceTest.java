@@ -141,7 +141,7 @@ class ActionResourceTest {
         .encodeToString(payload.getBytes(StandardCharsets.UTF_8));
     String token = String.format("aa.%s.cc", encodedPayload);
 
-    when(service.complete(TRAINEE_ID, ACTION_ID)).thenReturn(Optional.empty());
+    when(service.completeAsUser(TRAINEE_ID, ACTION_ID)).thenReturn(Optional.empty());
 
     ResponseEntity<ActionDto> response = controller.completeAction(token, ACTION_ID);
 
@@ -157,7 +157,7 @@ class ActionResourceTest {
     String token = String.format("aa.%s.cc", encodedPayload);
 
     ActionDto dto = new ActionDto("1", null, null, null, null, null, null);
-    when(service.complete(TRAINEE_ID, ACTION_ID)).thenReturn(Optional.of(dto));
+    when(service.completeAsUser(TRAINEE_ID, ACTION_ID)).thenReturn(Optional.of(dto));
 
     ResponseEntity<ActionDto> response = controller.completeAction(token, ACTION_ID);
 

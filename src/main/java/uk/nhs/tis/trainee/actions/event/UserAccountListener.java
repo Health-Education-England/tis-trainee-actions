@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2024 Crown Copyright (Health Education England)
+ * Copyright 2025 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -19,50 +19,43 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.tis.trainee.actions.model;
+package uk.nhs.tis.trainee.actions.event;
 
-import java.util.EnumSet;
-import java.util.Set;
-import lombok.Getter;
+import static uk.nhs.tis.trainee.actions.event.Operation.LOAD;
+
+import io.awspring.cloud.sqs.annotation.SqsListener;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+import uk.nhs.tis.trainee.actions.dto.AccountConfirmedEvent;
+import uk.nhs.tis.trainee.actions.service.ActionService;
 
 /**
- * The type category of the action to be performed.
+ * A listener for user account events.
  */
-public enum ActionType {
-  REVIEW_DATA,
-  SIGN_COJ,
-  SIGN_FORM_R_PART_A,
-  SIGN_FORM_R_PART_B,
-  REGISTER_TSS;
+@Slf4j
+@Component
+public class UserAccountListener {
+
+  private final ActionService actionService;
 
   /**
-   * The set of Programme action types.
+   * Construct a listener for user account events.
+   *
+   * @param actionService The action service.
    */
-  @Getter
-  private static final Set<ActionType> programmeActionTypes = EnumSet.of(
-      REVIEW_DATA,
-      SIGN_COJ,
-      SIGN_FORM_R_PART_A,
-      SIGN_FORM_R_PART_B);
+  public UserAccountListener(ActionService actionService) {
+    this.actionService = actionService;
+  }
 
   /**
-   * The set of Placement action types.
+   * Handle account confirmation events.
+   *
+   * @param event The account confirmation event.
    */
-  @Getter
-  private static final Set<ActionType> placementActionTypes = EnumSet.of(
-      REVIEW_DATA);
+  @SqsListener("${application.queues.account-confirmed}")
+  public void handleAccountConfirmation(AccountConfirmedEvent event) {
+    log.info("Handling account confirmation event for user {}.", event.traineeId());
+    actionService.updateActions(LOAD, event);
+  }
 
-  /**
-   * The set of Person action types.
-   */
-  @Getter
-  private static final Set<ActionType> personActionTypes = EnumSet.of(
-      REGISTER_TSS);
-
-  /**
-   * The set of user-completable action types.
-   */
-  @Getter
-  private static final Set<ActionType> userCompletableActionTypes = EnumSet.of(
-      REVIEW_DATA);
 }

@@ -28,7 +28,6 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.testcontainers.containers.localstack.LocalStackContainer.Service.SQS;
 import static uk.nhs.tis.trainee.actions.event.Operation.LOAD;
-import static uk.nhs.tis.trainee.actions.model.ActionType.REVIEW_DATA;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PLACEMENT;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -40,6 +39,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -59,6 +59,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.tis.trainee.actions.DockerImageNames;
 import uk.nhs.tis.trainee.actions.model.Action;
 import uk.nhs.tis.trainee.actions.model.Action.TisReferenceInfo;
+import uk.nhs.tis.trainee.actions.model.ActionType;
 
 @SpringBootTest
 @Testcontainers
@@ -110,7 +111,7 @@ class PlacementListenerIntegrationTest {
   }
 
   @Test
-  void shouldInsertReviewDataActionWhenPlacementCreated() throws JsonProcessingException {
+  void shouldInsertAllActionsWhenPlacementCreated() throws JsonProcessingException {
     String traineeId = UUID.randomUUID().toString();
     String eventString = """
         {
@@ -141,21 +142,29 @@ class PlacementListenerIntegrationTest {
         .ignoreExceptions()
         .untilAsserted(() -> {
           List<Action> found = mongoTemplate.find(query, Action.class);
-          assertThat("Unexpected action count.", found.size(), is(1));
+          assertThat("Unexpected action count.", found.size(),
+              is(ActionType.getPlacementActionTypes().size()));
           actions.addAll(found);
         });
 
-    Action action = actions.get(0);
-    assertThat("Unexpected action id.", action.id(), notNullValue());
-    assertThat("Unexpected action type.", action.type(), is(REVIEW_DATA));
-    assertThat("Unexpected trainee id.", action.traineeId(), is(traineeId));
-    assertThat("Unexpected available from date.", action.availableFrom(),
-        is(START_DATE.minusWeeks(12)));
-    assertThat("Unexpected due by date.", action.dueBy(), is(START_DATE));
-    assertThat("Unexpected completed date.", action.completed(), nullValue());
+    for (ActionType actionType : ActionType.getPlacementActionTypes()) {
+      Optional<Action> actionOptional = actions.stream()
+          .filter(a -> a.type().equals(actionType))
+          .findFirst();
 
-    TisReferenceInfo tisReference = action.tisReferenceInfo();
-    assertThat("Unexpected TIS id.", tisReference.id(), is(PLACEMENT_ID));
-    assertThat("Unexpected TIS type.", tisReference.type(), is(PLACEMENT));
+      assertThat("Missing action for type: " + actionType, actionOptional.isPresent(), is(true));
+      Action action = actionOptional.get();
+      assertThat("Unexpected action id.", action.id(), notNullValue());
+      assertThat("Unexpected action type.", action.type(), is(actionType));
+      assertThat("Unexpected trainee id.", action.traineeId(), is(traineeId));
+      assertThat("Unexpected available from date.", action.availableFrom(),
+          is(START_DATE.minusWeeks(12)));
+      assertThat("Unexpected due by date.", action.dueBy(), is(START_DATE));
+      assertThat("Unexpected completed date.", action.completed(), nullValue());
+
+      TisReferenceInfo tisReference = action.tisReferenceInfo();
+      assertThat("Unexpected TIS id.", tisReference.id(), is(PLACEMENT_ID));
+      assertThat("Unexpected TIS type.", tisReference.type(), is(PLACEMENT));
+    }
   }
 }

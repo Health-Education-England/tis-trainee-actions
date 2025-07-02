@@ -88,7 +88,9 @@ class EventPublishingServiceTest {
   }
 
   @Test
-  void shouldSetGroupIdWhenPublishingActionUpdateEvent() {
+  void shouldSetGroupIdWhenPublishingActionUpdateEventIfFifo() {
+    URI fifoQueue = URI.create(ACTION_TOPIC_ARN + ".fifo");
+    service = new EventPublishingService(snsTemplate, actionMapper, fifoQueue);
     Action.TisReferenceInfo tisReference = new Action.TisReferenceInfo(TIS_ID, PLACEMENT);
     Action action = new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, tisReference, PAST, FUTURE,
         COMPLETED);
@@ -106,6 +108,27 @@ class EventPublishingServiceTest {
 
     SnsNotification<ActionBroadcastDto> message = messageCaptor.getValue();
     assertThat("Unexpected group ID.", message.getGroupId(), is(ACTION_ID_STRING));
+  }
+
+  @Test
+  void shouldNotSetGroupIdWhenPublishingActionUpdateEventIfNotFifo() {
+    Action.TisReferenceInfo tisReference = new Action.TisReferenceInfo(TIS_ID, PLACEMENT);
+    Action action = new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, tisReference, PAST, FUTURE,
+        COMPLETED);
+    ActionBroadcastDto actionBroadcastDto = new ActionBroadcastDto(ACTION_ID.toString(),
+        REVIEW_DATA.toString(), TRAINEE_ID, tisReference, PAST, FUTURE,
+        COMPLETED, ActionStatus.CURRENT, Instant.now());
+
+    when(actionMapper.toCurrentActionBroadcastDto(action)).thenReturn(actionBroadcastDto);
+
+    service.publishActionUpdateEvent(action);
+
+    ArgumentCaptor<SnsNotification<ActionBroadcastDto>> messageCaptor = ArgumentCaptor.forClass(
+        SnsNotification.class);
+    verify(snsTemplate).sendNotification(any(), messageCaptor.capture());
+
+    SnsNotification<ActionBroadcastDto> message = messageCaptor.getValue();
+    assertThat("Unexpected group ID.", message.getGroupId(), nullValue());
   }
 
   @Test
@@ -159,7 +182,9 @@ class EventPublishingServiceTest {
   }
 
   @Test
-  void shouldSetGroupIdWhenPublishingActionDeleteEvent() {
+  void shouldSetGroupIdWhenPublishingActionDeleteEventIfFifo() {
+    URI fifoQueue = URI.create(ACTION_TOPIC_ARN + ".fifo");
+    service = new EventPublishingService(snsTemplate, actionMapper, fifoQueue);
     Action.TisReferenceInfo tisReference = new Action.TisReferenceInfo(TIS_ID, PLACEMENT);
     Action action = new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, tisReference, PAST, FUTURE,
         COMPLETED);
@@ -180,7 +205,7 @@ class EventPublishingServiceTest {
   }
 
   @Test
-  void shouldNotIncludeDetailWhenPublishingActionDeleteEvent() {
+  void shouldNotSetGroupIdWhenPublishingActionDeleteEventIfNotFifo() {
     Action.TisReferenceInfo tisReference = new Action.TisReferenceInfo(TIS_ID, PLACEMENT);
     Action action = new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, tisReference, PAST, FUTURE,
         COMPLETED);
@@ -197,9 +222,30 @@ class EventPublishingServiceTest {
     verify(snsTemplate).sendNotification(any(), messageCaptor.capture());
 
     SnsNotification<ActionBroadcastDto> message = messageCaptor.getValue();
+    assertThat("Unexpected group ID.", message.getGroupId(), nullValue());
+  }
+
+  @Test
+  void shouldNotIncludeDetailWhenPublishingActionDeleteEvent() {
+    Action.TisReferenceInfo tisReference = new Action.TisReferenceInfo(TIS_ID, PLACEMENT);
+    Action action = new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, tisReference, PAST, FUTURE,
+        COMPLETED);
+    ActionBroadcastDto actionBroadcastDto = new ActionBroadcastDto(ACTION_ID.toString(),
+        REVIEW_DATA.toString(), null, null, null, null,
+        null, ActionStatus.DELETED, Instant.now());
+
+    when(actionMapper.toDeletedActionBroadcastDto(action)).thenReturn(actionBroadcastDto);
+
+    service.publishActionDeleteEvent(action);
+
+    ArgumentCaptor<SnsNotification<ActionBroadcastDto>> messageCaptor = ArgumentCaptor.forClass(
+        SnsNotification.class);
+    verify(snsTemplate).sendNotification(any(), messageCaptor.capture());
+
+    SnsNotification<ActionBroadcastDto> message = messageCaptor.getValue();
     ActionBroadcastDto payload = message.getPayload();
     assertThat("Unexpected action id.", payload.id(), is(ACTION_ID_STRING));
-    assertThat("Unexpected action type.", payload.type(), nullValue());
+    assertThat("Unexpected action type.", payload.type(), is(REVIEW_DATA.toString()));
     assertThat("Unexpected trainee id.", payload.traineeId(), nullValue());
     assertThat("Unexpected reference info", payload.tisReferenceInfo(), nullValue());
     assertThat("Unexpected available from date.", payload.availableFrom(), nullValue());

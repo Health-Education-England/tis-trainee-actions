@@ -21,7 +21,11 @@
 
 package uk.nhs.tis.trainee.actions.service;
 
+import static uk.nhs.tis.trainee.actions.model.ActionType.REGISTER_TSS;
 import static uk.nhs.tis.trainee.actions.model.ActionType.REVIEW_DATA;
+import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PERSON;
+import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PLACEMENT;
+import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -31,12 +35,14 @@ import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
 import org.springframework.stereotype.Service;
+import uk.nhs.tis.trainee.actions.dto.AccountConfirmedEvent;
 import uk.nhs.tis.trainee.actions.dto.ActionDto;
 import uk.nhs.tis.trainee.actions.dto.PlacementDto;
 import uk.nhs.tis.trainee.actions.dto.ProgrammeMembershipDto;
 import uk.nhs.tis.trainee.actions.event.Operation;
 import uk.nhs.tis.trainee.actions.mapper.ActionMapper;
 import uk.nhs.tis.trainee.actions.model.Action;
+import uk.nhs.tis.trainee.actions.model.ActionType;
 import uk.nhs.tis.trainee.actions.repository.ActionRepository;
 
 /**
@@ -58,10 +64,39 @@ public class ActionService {
    * The constructor of action service.
    */
   public ActionService(ActionRepository repository, ActionMapper mapper,
-                       EventPublishingService eventPublishingService) {
+      EventPublishingService eventPublishingService) {
     this.repository = repository;
     this.mapper = mapper;
     this.eventPublishingService = eventPublishingService;
+  }
+
+  /**
+   * Add or update actions for a given Placement DTO.
+   *
+   * @param dto     The placement DTO.
+   * @param actions The list of actions to supplement with new or updated actions.
+   */
+  private void addOrUpdatePlacementAction(PlacementDto dto, List<Action> actions) {
+    List<Action> existingActions = repository.findByTraineeIdAndTisReferenceInfo(
+        dto.traineeId(), dto.id(), PLACEMENT.toString());
+
+    for (ActionType actionType : ActionType.getPlacementActionTypes()) {
+      Action newAction = mapper.toAction(dto, actionType);
+      if (existingActions.stream().noneMatch(a -> a.type().equals(actionType))) {
+        // only add action if it does not already exist
+        addActionIfDueAfterEpoch(newAction, actions);
+      } else {
+        if (replaceUpdatedPlacementAction(existingActions, newAction, dto.id())) {
+          List<Action> deletedActions
+              = repository.deleteByTraineeIdAndTisReferenceInfoAndActionType(
+              newAction.traineeId(), newAction.tisReferenceInfo().id(),
+              newAction.tisReferenceInfo().type().toString(),
+              newAction.type().toString()); //completed actions are deleted here
+          deletedActions.forEach(eventPublishingService::publishActionDeleteEvent);
+          addActionIfDueAfterEpoch(newAction, actions);
+        }
+      }
+    }
   }
 
   /**
@@ -75,25 +110,11 @@ public class ActionService {
     boolean deleteAction = false;
     List<Action> actions = new ArrayList<>();
 
-    Action action = mapper.toAction(dto, REVIEW_DATA);
-
     if (Objects.equals(operation, Operation.LOAD)) {
       if (PLACEMENT_TYPES_TO_ACT_ON.stream().anyMatch(dto.placementType()::equalsIgnoreCase)) {
-        //find if action already exists (there should only be at most one)
-        List<Action> existingActions = repository.findByTraineeIdAndTisReferenceInfo(
-            action.traineeId(), action.tisReferenceInfo().id(),
-            action.tisReferenceInfo().type().toString());
-        if (existingActions.isEmpty()) {
-          addActionIfDueAfterEpoch(action, actions);
-        } else {
-          if (replaceUpdatedPlacementAction(existingActions, action, dto.id())) {
-            List<Action> deletedActions = repository.deleteByTraineeIdAndTisReferenceInfo(
-                action.traineeId(), action.tisReferenceInfo().id(),
-                action.tisReferenceInfo().type().toString());
-            deletedActions.forEach(eventPublishingService::publishActionDeleteEvent);
-            addActionIfDueAfterEpoch(action, actions);
-          }
-        }
+
+        addOrUpdatePlacementAction(dto, actions);
+
       } else {
         log.info("Placement {} of type {} is ignored", dto.id(), dto.placementType());
         deleteAction = true;
@@ -104,6 +125,7 @@ public class ActionService {
     }
 
     if (deleteAction) {
+      Action action = mapper.toAction(dto, REVIEW_DATA);
       deleteIncompleteActions(action);
     }
 
@@ -114,7 +136,7 @@ public class ActionService {
 
     log.info("Adding {} new action(s) for Placement {}.", actions.size(), dto.id());
     List<Action> actionInserted = repository.insert(actions);
-    actionInserted.stream().forEach(eventPublishingService::publishActionUpdateEvent);
+    actionInserted.forEach(eventPublishingService::publishActionUpdateEvent);
     return mapper.toDtos(actionInserted);
   }
 
@@ -128,20 +150,25 @@ public class ActionService {
   public List<ActionDto> updateActions(Operation operation, ProgrammeMembershipDto dto) {
     List<Action> actions = new ArrayList<>();
 
-    Action action = mapper.toAction(dto, REVIEW_DATA);
-
     if (Objects.equals(operation, Operation.LOAD)
         && !(dto.startDate().isBefore(ACTIONS_EPOCH))) {
       List<Action> existingActions = repository.findByTraineeIdAndTisReferenceInfo(
-          action.traineeId(), action.tisReferenceInfo().id(),
-          action.tisReferenceInfo().type().toString());
-      if (existingActions.isEmpty()) {
-        // only create action if it does not already exist
-        // and if the programme membership starts post-epoch
-        addActionIfDueAfterEpoch(action, actions);
+          dto.traineeId(), dto.id(), PROGRAMME_MEMBERSHIP.toString());
+
+      for (ActionType actionType : ActionType.getProgrammeActionTypes()) {
+        Action newAction = mapper.toAction(dto, actionType);
+        if (existingActions.stream().noneMatch(a -> a.type().equals(actionType))) {
+          // only add action if it does not already exist
+          addActionIfDueAfterEpoch(newAction, actions);
+        } else {
+          log.info("Programme Membership {} already has action of type {}, skipping.",
+              dto.id(), actionType);
+        }
       }
+
     } else if (Objects.equals(operation, Operation.DELETE)) {
       log.info("Programme membership {} is deleted", dto.id());
+      Action action = mapper.toAction(dto, REVIEW_DATA);
       deleteIncompleteActions(action);
     }
 
@@ -152,7 +179,51 @@ public class ActionService {
 
     log.info("Adding {} new action(s) for Programme Membership {}.", actions.size(), dto.id());
     List<Action> actionInserted = repository.insert(actions);
-    actionInserted.stream().forEach(eventPublishingService::publishActionUpdateEvent);
+    actionInserted.forEach(eventPublishingService::publishActionUpdateEvent);
+    return mapper.toDtos(actionInserted);
+  }
+
+  /**
+   * Updates the actions associated with the given Operation and User account data.
+   *
+   * @param operation The operation that triggered the update.
+   * @param account   The Account confirmation event data associated with the operation.
+   * @return A list of updated actions, empty if no actions required.
+   */
+  public List<ActionDto> updateActions(Operation operation, AccountConfirmedEvent account) {
+    List<Action> actions = new ArrayList<>();
+
+    if (Objects.equals(operation, Operation.LOAD)) {
+      List<Action> existingActions = repository.findByTraineeIdAndTisReferenceInfo(
+          account.traineeId(), account.traineeId(), PERSON.toString());
+      for (ActionType actionType : ActionType.getPersonActionTypes()) {
+        Action newAction = mapper.toAction(account, actionType);
+        if (existingActions.stream().noneMatch(a -> a.type().equals(actionType))) {
+          // only add action if it does not already exist
+          actions.add(newAction);
+        } else {
+          log.info("Account for person {} already has action of type {}, skipping.",
+              account.traineeId(), actionType);
+        }
+      }
+    } else if (Objects.equals(operation, Operation.DELETE)) {
+      log.info("Account for person {} is deleted.", account.traineeId());
+      Action action = mapper.toAction(account, REGISTER_TSS);
+      deleteIncompleteActions(action);
+      //None will be deleted since these are all complete actions - is this correct?
+      //What if they register, deregister and then need to reregister?
+      //At present, only if incomplete confirmation actions are created by some other process will
+      //these be deleted.
+    }
+
+    if (actions.isEmpty()) {
+      log.info("No new actions required for Person account {}", account.traineeId());
+      return List.of();
+    }
+
+    log.info("Adding {} new action(s) for Person account {}.", actions.size(), account.traineeId());
+    List<Action> actionInserted = repository.insert(actions);
+    actionInserted.forEach(eventPublishingService::publishActionUpdateEvent);
     return mapper.toDtos(actionInserted);
   }
 
@@ -173,7 +244,7 @@ public class ActionService {
   }
 
   /**
-   * Delete any not-completed actions that match the given action item.
+   * Delete any not-completed actions (of any type) that match the given action item.
    *
    * @param likeAction The action to use to identify candidates for deletion.
    */
@@ -185,7 +256,7 @@ public class ActionService {
         likeAction.tisReferenceInfo().type().toString());
     log.info("{} obsolete not completed action(s) deleted for {} {}", deletedActions.size(),
         likeAction.tisReferenceInfo().type(), likeAction.tisReferenceInfo().id());
-    deletedActions.stream().forEach(eventPublishingService::publishActionDeleteEvent);
+    deletedActions.forEach(eventPublishingService::publishActionDeleteEvent);
   }
 
   /**
@@ -201,13 +272,13 @@ public class ActionService {
   }
 
   /**
-   * Complete a trainee's action.
+   * Complete a trainee's action. It must be a user-completable action.
    *
    * @param traineeId The ID of the trainee who owns the action to be completed.
    * @param actionId  The ID of the action to complete.
    * @return The completed action, or empty if not found.
    */
-  public Optional<ActionDto> complete(String traineeId, String actionId) {
+  public Optional<ActionDto> completeAsUser(String traineeId, String actionId) {
     if (!ObjectId.isValid(actionId)) {
       log.info("Skipping action completion due to invalid id.");
       return Optional.empty();
@@ -228,6 +299,12 @@ public class ActionService {
       return Optional.empty();
     }
 
+    if (!ActionType.getUserCompletableActionTypes().contains(action.type())) {
+      log.info("Skipping action completion as the action type {} is not user-completable.",
+          action.type());
+      return Optional.empty();
+    }
+
     Action completedAction = mapper.complete(action);
     completedAction = repository.save(completedAction);
     eventPublishingService.publishActionUpdateEvent(completedAction);
@@ -236,7 +313,8 @@ public class ActionService {
   }
 
   /**
-   * Determine whether a placement update means that its existing actions should be replaced.
+   * Determine whether a placement update means that its existing actions of given type should be
+   * replaced.
    *
    * @param existingActions The list of existing action for the placement.
    * @param action          The updated placement action.
@@ -245,18 +323,22 @@ public class ActionService {
    */
   private boolean replaceUpdatedPlacementAction(List<Action> existingActions, Action action,
       String placementId) {
-    Optional<Action> actionWithDifferentDueDate = existingActions.stream()
+    List<Action> actionsOfType = existingActions.stream()
+        .filter(a -> a.type().equals(action.type()))
+        .toList();
+    Optional<Action> actionWithDifferentDueDate = actionsOfType.stream()
         .filter(a -> !a.dueBy().isEqual(action.dueBy()))
         .findAny();
     if (actionWithDifferentDueDate.isPresent()) {
       //the saved action has a different placement start date, so replace it
-      log.info("Placement {} already has {} action(s), these are replaced and set to "
+      log.info("Placement {} already has {} {} action(s), these are replaced and set to "
               + "not completed as placement start date has changed from {} to {}", placementId,
-          existingActions.size(), actionWithDifferentDueDate.get().dueBy(), action.dueBy());
+          actionsOfType.size(), action.type(), actionWithDifferentDueDate.get().dueBy(),
+          action.dueBy());
       return true;
     } else {
-      log.info("Placement {} already has {} action(s), these are left as-is", placementId,
-          existingActions.size());
+      log.info("Placement {} already has {} {} action(s), these are left as-is", placementId,
+          actionsOfType.size(), action.type());
     }
     return false;
   }
