@@ -23,6 +23,7 @@ package uk.nhs.tis.trainee.actions.mapper;
 
 import static org.mapstruct.MappingConstants.ComponentModel.SPRING;
 
+import java.time.Instant;
 import java.util.List;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -66,6 +67,15 @@ public interface ActionMapper {
    */
   @Mapping(target = "completed", expression = "java(java.time.Instant.now())")
   Action complete(Action action);
+
+  /**
+   * Complete the given action, with the given timestamp.
+   *
+   * @param action The action to complete.
+   * @return The completed action.
+   */
+  @Mapping(target = "completed", source = "completedAt")
+  Action complete(Action action, Instant completedAt);
 
   /**
    * Create an action using Programme Membership data.
