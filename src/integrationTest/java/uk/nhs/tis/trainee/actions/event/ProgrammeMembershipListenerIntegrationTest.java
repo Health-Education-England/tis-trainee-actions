@@ -39,6 +39,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -70,7 +71,7 @@ class ProgrammeMembershipListenerIntegrationTest {
   private static final String PROGRAMME_MEMBERSHIP_ID = UUID.randomUUID().toString();
   private static final LocalDate NOW = LocalDate.now();
   private static final LocalDate START_DATE = NOW.plusDays(1);
-  private static final Instant NOW_INSTANT = Instant.now();
+  private static final Instant COJ_SYNCED = Instant.now().minusSeconds(10);
 
   private static final String PROGRAMME_MEMBERSHIP_SYNCED_QUEUE = UUID.randomUUID().toString();
 
@@ -184,7 +185,7 @@ class ProgrammeMembershipListenerIntegrationTest {
             },
             "operation": "%s"
           }
-        }""".formatted(PROGRAMME_MEMBERSHIP_ID, traineeId, START_DATE, NOW_INSTANT, NOW_INSTANT,
+        }""".formatted(PROGRAMME_MEMBERSHIP_ID, traineeId, START_DATE, Instant.MIN, COJ_SYNCED,
         LOAD);
 
     JsonNode eventJson = JsonMapper.builder()
@@ -221,7 +222,7 @@ class ProgrammeMembershipListenerIntegrationTest {
       assertThat("Unexpected due by date.", action.dueBy(), is(START_DATE));
       if (actionType == SIGN_COJ) {
         assertThat("Unexpected completed date for SIGN_COJ.", action.completed(),
-            notNullValue());
+            is(COJ_SYNCED.truncatedTo(ChronoUnit.MILLIS)));
       } else {
         assertThat("Unexpected completed date for non-COJ action.", action.completed(),
             nullValue());

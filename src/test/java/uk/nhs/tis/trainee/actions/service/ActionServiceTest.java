@@ -192,7 +192,7 @@ class ActionServiceTest {
 
   @Test
   void shouldInsertCompletedCojSignedActionOnProgrammeMembershipWithCoj() {
-    ConditionsOfJoiningDto coj = new ConditionsOfJoiningDto(Instant.MIN, "version", Instant.now());
+    ConditionsOfJoiningDto coj = new ConditionsOfJoiningDto(Instant.MIN, "version", Instant.MAX);
     ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, ACTIONS_EPOCH, coj);
     when(repository.findByTraineeIdAndTisReferenceInfo(any(), any(), any()))
         .thenReturn(new ArrayList<>());
@@ -209,7 +209,7 @@ class ActionServiceTest {
     assertThat("Unexpected trainee id.", action.traineeId(), is(TRAINEE_ID));
     assertThat("Unexpected available from date.", action.availableFrom(), is(NOW));
     assertThat("Unexpected due by date.", action.dueBy(), is(ACTIONS_EPOCH));
-    assertThat("Unexpected completed date.", action.completed(), notNullValue());
+    assertThat("Unexpected completed date.", action.completed(), is(Instant.MAX));
 
     TisReferenceInfo tisReference = action.tisReferenceInfo();
     assertThat("Unexpected TIS id.", tisReference.id(), is(TIS_ID));
@@ -219,7 +219,7 @@ class ActionServiceTest {
 
   @Test
   void shouldCompleteCojSignedActionOnProgrammeMembershipWithExistingCojAction() {
-    ConditionsOfJoiningDto coj = new ConditionsOfJoiningDto(Instant.MIN, "version", Instant.now());
+    ConditionsOfJoiningDto coj = new ConditionsOfJoiningDto(Instant.MIN, "version", Instant.MAX);
     ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, PRE_EPOCH, coj);
 
     TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
@@ -243,7 +243,7 @@ class ActionServiceTest {
     assertThat("Unexpected available from date.", actionPublished.availableFrom(),
         is(PRE_EPOCH));
     assertThat("Unexpected due by date.", actionPublished.dueBy(), is(POST_EPOCH));
-    assertThat("Unexpected completed date.", actionPublished.completed(), notNullValue());
+    assertThat("Unexpected completed date.", actionPublished.completed(), is(Instant.MAX));
     TisReferenceInfo refInfo = actionPublished.tisReferenceInfo();
     assertThat("Unexpected TIS id.", refInfo.id(), is(TIS_ID));
     assertThat("Unexpected TIS type.", refInfo.type(), is(PROGRAMME_MEMBERSHIP));

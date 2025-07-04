@@ -28,6 +28,7 @@ import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PERSON;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -185,12 +186,12 @@ public class ActionService {
           .filter(a -> a.type().equals(SIGN_COJ)).findFirst();
       if (addedAction.isPresent()) {
         actions.remove(addedAction.get());
-        actions.add(mapper.complete(addedAction.get()));
+        actions.add(mapper.complete(addedAction.get(), dto.conditionsOfJoining().syncedAt()));
       }
       // Otherwise, if an existing CoJ action exists, complete it (if it's incomplete).
       Optional<Action> existingAction = existingActions.stream()
           .filter(a -> a.type().equals(SIGN_COJ)).findFirst();
-      existingAction.ifPresent(this::complete);
+      existingAction.ifPresent(action -> complete(action, dto.conditionsOfJoining().syncedAt()));
     }
 
     if (actions.isEmpty()) {
@@ -295,16 +296,22 @@ public class ActionService {
   /**
    * Complete an action.
    *
-   * @param action The action to complete.
+   * @param action      The action to complete.
+   * @param completedAt The timestamp when the action was completed. If null, the current time is used.
    * @return The completed action, or empty if not found.
    */
-  private Optional<ActionDto> complete(Action action) {
+  private Optional<ActionDto> complete(Action action, Instant completedAt) {
     if (action.completed() != null) {
       log.info("Skipping action completion as the action was already complete.");
       return Optional.empty();
     }
 
-    Action completedAction = mapper.complete(action);
+    Action completedAction;
+    if (completedAt == null) {
+      completedAction = mapper.complete(action);
+    } else {
+      completedAction = mapper.complete(action, completedAt);
+    }
     completedAction = repository.save(completedAction);
     eventPublishingService.publishActionUpdateEvent(completedAction);
     log.info("Action {} marked as completed at {}.", completedAction.id(),
@@ -341,7 +348,7 @@ public class ActionService {
       return Optional.empty();
     }
 
-    return complete(action);
+    return complete(action, null);
   }
 
   /**
