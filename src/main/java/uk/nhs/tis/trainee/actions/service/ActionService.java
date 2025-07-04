@@ -152,8 +152,6 @@ public class ActionService {
   public List<ActionDto> updateActions(Operation operation, ProgrammeMembershipDto dto) {
     List<Action> actions = new ArrayList<>();
 
-    //TODO: if contains CoJ, then complete COJ action
-
     List<Action> existingActions = repository.findByTraineeIdAndTisReferenceInfo(
         dto.traineeId(), dto.id(), PROGRAMME_MEMBERSHIP.toString());
 
