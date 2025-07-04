@@ -295,7 +295,7 @@ public class ActionService {
    * Complete an action.
    *
    * @param action      The action to complete.
-   * @param completedAt The timestamp when the action was completed. If null, the current time is used.
+   * @param completedAt The timestamp when the action was completed. If null, current time is used.
    * @return The completed action, or empty if not found.
    */
   private Optional<ActionDto> complete(Action action, Instant completedAt) {
