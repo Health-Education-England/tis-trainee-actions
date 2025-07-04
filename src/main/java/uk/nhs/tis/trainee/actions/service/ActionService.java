@@ -23,6 +23,7 @@ package uk.nhs.tis.trainee.actions.service;
 
 import static uk.nhs.tis.trainee.actions.model.ActionType.REGISTER_TSS;
 import static uk.nhs.tis.trainee.actions.model.ActionType.REVIEW_DATA;
+import static uk.nhs.tis.trainee.actions.model.ActionType.SIGN_COJ;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PERSON;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
@@ -150,11 +151,13 @@ public class ActionService {
   public List<ActionDto> updateActions(Operation operation, ProgrammeMembershipDto dto) {
     List<Action> actions = new ArrayList<>();
 
+    //TODO: if contains CoJ, then complete COJ action
+
+    List<Action> existingActions = repository.findByTraineeIdAndTisReferenceInfo(
+        dto.traineeId(), dto.id(), PROGRAMME_MEMBERSHIP.toString());
+
     if (Objects.equals(operation, Operation.LOAD)
         && !(dto.startDate().isBefore(ACTIONS_EPOCH))) {
-      List<Action> existingActions = repository.findByTraineeIdAndTisReferenceInfo(
-          dto.traineeId(), dto.id(), PROGRAMME_MEMBERSHIP.toString());
-
       for (ActionType actionType : ActionType.getProgrammeActionTypes()) {
         Action newAction = mapper.toAction(dto, actionType);
         if (existingActions.stream().noneMatch(a -> a.type().equals(actionType))) {
@@ -170,6 +173,24 @@ public class ActionService {
       log.info("Programme membership {} is deleted", dto.id());
       Action action = mapper.toAction(dto, REVIEW_DATA);
       deleteIncompleteActions(action);
+    }
+
+    // Handle Conditions of Joining (CoJ) action. We ignore ACTIONS_EPOCH and start date here to
+    // avoid dangling CoJ actions where a programme start date has been updated to before the epoch.
+    if (Objects.equals(operation, Operation.LOAD) && dto.conditionsOfJoining() != null) {
+      log.info("Completing any CoJ actions for Programme Membership {}.", dto.id());
+      // If a CoJ action has just been created, replace it with a new completed action. This should
+      // only be possible if bulk-loading programme memberships that already have signed CoJs.
+      Optional<Action> addedAction = actions.stream()
+          .filter(a -> a.type().equals(SIGN_COJ)).findFirst();
+      if (addedAction.isPresent()) {
+        actions.remove(addedAction.get());
+        actions.add(mapper.complete(addedAction.get()));
+      }
+      // Otherwise, if an existing CoJ action exists, complete it (if it's incomplete).
+      Optional<Action> existingAction = existingActions.stream()
+          .filter(a -> a.type().equals(SIGN_COJ)).findFirst();
+      existingAction.ifPresent(this::complete);
     }
 
     if (actions.isEmpty()) {
@@ -272,6 +293,26 @@ public class ActionService {
   }
 
   /**
+   * Complete an action.
+   *
+   * @param action The action to complete.
+   * @return The completed action, or empty if not found.
+   */
+  private Optional<ActionDto> complete(Action action) {
+    if (action.completed() != null) {
+      log.info("Skipping action completion as the action was already complete.");
+      return Optional.empty();
+    }
+
+    Action completedAction = mapper.complete(action);
+    completedAction = repository.save(completedAction);
+    eventPublishingService.publishActionUpdateEvent(completedAction);
+    log.info("Action {} marked as completed at {}.", completedAction.id(),
+        completedAction.completed());
+    return Optional.of(mapper.toDto(completedAction));
+  }
+
+  /**
    * Complete a trainee's action. It must be a user-completable action.
    *
    * @param traineeId The ID of the trainee who owns the action to be completed.
@@ -294,22 +335,13 @@ public class ActionService {
 
     Action action = optionalAction.get();
 
-    if (action.completed() != null) {
-      log.info("Skipping action completion as the action was already complete.");
-      return Optional.empty();
-    }
-
     if (!ActionType.getUserCompletableActionTypes().contains(action.type())) {
       log.info("Skipping action completion as the action type {} is not user-completable.",
           action.type());
       return Optional.empty();
     }
 
-    Action completedAction = mapper.complete(action);
-    completedAction = repository.save(completedAction);
-    eventPublishingService.publishActionUpdateEvent(completedAction);
-    log.info("Action {} marked as completed at {}.", actionId, completedAction.completed());
-    return Optional.of(mapper.toDto(completedAction));
+    return complete(action);
   }
 
   /**

@@ -65,6 +65,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import uk.nhs.tis.trainee.actions.dto.AccountConfirmedEvent;
 import uk.nhs.tis.trainee.actions.dto.ActionDto;
+import uk.nhs.tis.trainee.actions.dto.ConditionsOfJoiningDto;
 import uk.nhs.tis.trainee.actions.dto.PlacementDto;
 import uk.nhs.tis.trainee.actions.dto.ProgrammeMembershipDto;
 import uk.nhs.tis.trainee.actions.event.Operation;
@@ -100,7 +101,8 @@ class ActionServiceTest {
 
   @Test
   void shouldInsertAllActionsOnFirstSightOfPostEpochProgrammeMembership() {
-    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, ACTIONS_EPOCH);
+    ProgrammeMembershipDto dto
+        = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, ACTIONS_EPOCH, null);
 
     when(repository.findByTraineeIdAndTisReferenceInfo(any(), any(), any()))
         .thenReturn(new ArrayList<>());
@@ -156,18 +158,19 @@ class ActionServiceTest {
 
   @Test
   void shouldNotInsertActionsOnFirstSightOfPreEpochProgrammeMembership() {
-    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, PRE_EPOCH);
+    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, PRE_EPOCH, null);
 
     List<ActionDto> actions = service.updateActions(Operation.LOAD, dto);
 
     assertThat("Unexpected action count.", actions.size(), is(0));
-    verifyNoInteractions(repository);
-    verifyNoMoreInteractions(eventPublishingService);
+    verify(repository).findByTraineeIdAndTisReferenceInfo(any(), any(), any());
+    verifyNoMoreInteractions(repository);
+    verifyNoInteractions(eventPublishingService);
   }
 
   @Test
   void shouldNotInsertActionsOnAlreadyActionedPostEpochProgrammeMembership() {
-    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, POST_EPOCH);
+    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, POST_EPOCH, null);
 
     TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
     List<Action> existingActions = new ArrayList<>();
@@ -185,6 +188,65 @@ class ActionServiceTest {
     verify(repository).findByTraineeIdAndTisReferenceInfo(any(), any(), any());
     verifyNoMoreInteractions(repository);
     verifyNoMoreInteractions(eventPublishingService);
+  }
+
+  @Test
+  void shouldInsertCompletedCojSignedActionOnProgrammeMembershipWithCoj() {
+    ConditionsOfJoiningDto coj = new ConditionsOfJoiningDto(Instant.MIN, "version", Instant.now());
+    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, ACTIONS_EPOCH, coj);
+    when(repository.findByTraineeIdAndTisReferenceInfo(any(), any(), any()))
+        .thenReturn(new ArrayList<>());
+
+    when(repository.insert(anyIterable())).thenAnswer(inv -> inv.getArgument(0));
+
+    List<ActionDto> actions = service.updateActions(Operation.LOAD, dto);
+
+    Optional<ActionDto> actionOfType = actions.stream()
+        .filter(a -> a.type().equals(SIGN_COJ.toString())).findFirst();
+    assertThat("Missing action for SIGN_COJ.", actionOfType.isPresent(), is(true));
+    ActionDto action = actionOfType.get();
+    assertThat("Unexpected action id.", action.id(), nullValue());
+    assertThat("Unexpected trainee id.", action.traineeId(), is(TRAINEE_ID));
+    assertThat("Unexpected available from date.", action.availableFrom(), is(NOW));
+    assertThat("Unexpected due by date.", action.dueBy(), is(ACTIONS_EPOCH));
+    assertThat("Unexpected completed date.", action.completed(), notNullValue());
+
+    TisReferenceInfo tisReference = action.tisReferenceInfo();
+    assertThat("Unexpected TIS id.", tisReference.id(), is(TIS_ID));
+    assertThat("Unexpected TIS type.", tisReference.type(),
+        is(PROGRAMME_MEMBERSHIP));
+  }
+
+  @Test
+  void shouldCompleteCojSignedActionOnProgrammeMembershipWithExistingCojAction() {
+    ConditionsOfJoiningDto coj = new ConditionsOfJoiningDto(Instant.MIN, "version", Instant.now());
+    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, PRE_EPOCH, coj);
+
+    TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
+    List<Action> existingActions = List.of(new Action(ObjectId.get(), SIGN_COJ, TRAINEE_ID,
+        tisReference, PRE_EPOCH, POST_EPOCH, null));
+    when(repository.findByTraineeIdAndTisReferenceInfo(any(), any(), any()))
+        .thenReturn(existingActions);
+
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    List<ActionDto> actions = service.updateActions(Operation.LOAD, dto);
+    assertThat("Unexpected action count.", actions.size(), is(0)); //since PRE_EPOCH
+
+    ArgumentCaptor<Action> actionCaptor = ArgumentCaptor.forClass(Action.class);
+    verify(eventPublishingService).publishActionUpdateEvent(actionCaptor.capture());
+    Action actionPublished = actionCaptor.getValue();
+
+    assertThat("Unexpected action id.", actionPublished.id(), notNullValue());
+    assertThat("Unexpected action type.", actionPublished.type(), is(SIGN_COJ));
+    assertThat("Unexpected trainee id.", actionPublished.traineeId(), is(TRAINEE_ID));
+    assertThat("Unexpected available from date.", actionPublished.availableFrom(),
+        is(PRE_EPOCH));
+    assertThat("Unexpected due by date.", actionPublished.dueBy(), is(POST_EPOCH));
+    assertThat("Unexpected completed date.", actionPublished.completed(), notNullValue());
+    TisReferenceInfo refInfo = actionPublished.tisReferenceInfo();
+    assertThat("Unexpected TIS id.", refInfo.id(), is(TIS_ID));
+    assertThat("Unexpected TIS type.", refInfo.type(), is(PROGRAMME_MEMBERSHIP));
   }
 
   @Test
@@ -399,7 +461,7 @@ class ActionServiceTest {
   @MethodSource("providePreAndPostEpochDates")
   void shouldDeleteAnyExistingNotCompleteActionsWhenProgrammeMembershipOperationIsDelete(
       LocalDate theDate) {
-    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, theDate);
+    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, theDate, null);
 
     Action action1 = new Action(ObjectId.get(), REVIEW_DATA, TRAINEE_ID, null, null,
         POST_EPOCH, null);

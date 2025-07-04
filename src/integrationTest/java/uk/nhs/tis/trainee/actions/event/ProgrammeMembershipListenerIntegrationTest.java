@@ -28,6 +28,7 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.testcontainers.containers.localstack.LocalStackContainer.Service.SQS;
 import static uk.nhs.tis.trainee.actions.event.Operation.LOAD;
+import static uk.nhs.tis.trainee.actions.model.ActionType.SIGN_COJ;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -36,6 +37,7 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import io.awspring.cloud.sqs.operations.SqsTemplate;
 import java.io.IOException;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -68,6 +70,7 @@ class ProgrammeMembershipListenerIntegrationTest {
   private static final String PROGRAMME_MEMBERSHIP_ID = UUID.randomUUID().toString();
   private static final LocalDate NOW = LocalDate.now();
   private static final LocalDate START_DATE = NOW.plusDays(1);
+  private static final Instant NOW_INSTANT = Instant.now();
 
   private static final String PROGRAMME_MEMBERSHIP_SYNCED_QUEUE = UUID.randomUUID().toString();
 
@@ -160,6 +163,69 @@ class ProgrammeMembershipListenerIntegrationTest {
       assertThat("Unexpected due by date.", action.dueBy(), is(START_DATE));
       assertThat("Unexpected completed date.", action.completed(), nullValue());
 
+      TisReferenceInfo tisReference = action.tisReferenceInfo();
+      assertThat("Unexpected TIS id.", tisReference.id(), is(PROGRAMME_MEMBERSHIP_ID));
+      assertThat("Unexpected TIS type.", tisReference.type(), is(PROGRAMME_MEMBERSHIP));
+    }
+  }
+
+  @Test
+  void shouldInsertCompletedSignCojActionWhenProgrammeMembershipHasCoj()
+      throws JsonProcessingException {
+    String traineeId = UUID.randomUUID().toString();
+    String eventString = """
+        {
+          "record": {
+            "data": {
+              "tisId": "%s",
+              "personId": "%s",
+              "startDate": "%s",
+              "conditionsOfJoining": {"signedAt": "%s", "version": "1.0", "syncedAt": "%s"}
+            },
+            "operation": "%s"
+          }
+        }""".formatted(PROGRAMME_MEMBERSHIP_ID, traineeId, START_DATE, NOW_INSTANT, NOW_INSTANT,
+        LOAD);
+
+    JsonNode eventJson = JsonMapper.builder()
+        .build()
+        .readTree(eventString);
+
+    sqsTemplate.send(PROGRAMME_MEMBERSHIP_SYNCED_QUEUE, eventJson);
+
+    Criteria criteria = Criteria.where("traineeId").is(traineeId);
+    Query query = Query.query(criteria);
+    List<Action> actions = new ArrayList<>();
+
+    await()
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(10))
+        .ignoreExceptions()
+        .untilAsserted(() -> {
+          List<Action> found = mongoTemplate.find(query, Action.class);
+          assertThat("Unexpected action count.", found.size(),
+              is(ActionType.getProgrammeActionTypes().size()));
+          actions.addAll(found);
+        });
+
+    for (ActionType actionType : ActionType.getProgrammeActionTypes()) {
+      Optional<Action> actionOptional = actions.stream()
+          .filter(a -> a.type().equals(actionType))
+          .findFirst();
+      assertThat("Missing action for type: " + actionType, actionOptional.isPresent(), is(true));
+      Action action = actionOptional.get();
+      assertThat("Unexpected action id.", action.id(), notNullValue());
+      assertThat("Unexpected action type.", action.type(), is(actionType));
+      assertThat("Unexpected trainee id.", action.traineeId(), is(traineeId));
+      assertThat("Unexpected available from date.", action.availableFrom(), is(NOW));
+      assertThat("Unexpected due by date.", action.dueBy(), is(START_DATE));
+      if (actionType == SIGN_COJ) {
+        assertThat("Unexpected completed date for SIGN_COJ.", action.completed(),
+            notNullValue());
+      } else {
+        assertThat("Unexpected completed date for non-COJ action.", action.completed(),
+            nullValue());
+      }
       TisReferenceInfo tisReference = action.tisReferenceInfo();
       assertThat("Unexpected TIS id.", tisReference.id(), is(PROGRAMME_MEMBERSHIP_ID));
       assertThat("Unexpected TIS type.", tisReference.type(), is(PROGRAMME_MEMBERSHIP));
