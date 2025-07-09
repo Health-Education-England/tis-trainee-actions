@@ -3,6 +3,7 @@ application:
   queues:
     account-confirmed: ${ACCOUNT_CONFIRMED_QUEUE}
     coj-received: ${COJ_RECEIVED_QUEUE}
+    form-updated: ${FORM_UPDATED_QUEUE}
     placement-synced: ${PLACEMENT_SYNCED_QUEUE}
     programme-membership-synced: ${PROGRAMME_MEMBERSHIP_SYNCED_QUEUE}
   sns:
