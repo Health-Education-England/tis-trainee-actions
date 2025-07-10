@@ -65,7 +65,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import uk.nhs.tis.trainee.actions.dto.AccountConfirmedEvent;
 import uk.nhs.tis.trainee.actions.dto.ActionDto;
-import uk.nhs.tis.trainee.actions.dto.ConditionsOfJoiningDto;
+import uk.nhs.tis.trainee.actions.dto.ConditionsOfJoining;
 import uk.nhs.tis.trainee.actions.dto.PlacementDto;
 import uk.nhs.tis.trainee.actions.dto.ProgrammeMembershipDto;
 import uk.nhs.tis.trainee.actions.event.Operation;
@@ -192,7 +192,7 @@ class ActionServiceTest {
 
   @Test
   void shouldInsertCompletedCojSignedActionOnProgrammeMembershipWithCoj() {
-    ConditionsOfJoiningDto coj = new ConditionsOfJoiningDto(Instant.MIN, "version", Instant.MAX);
+    ConditionsOfJoining coj = new ConditionsOfJoining(Instant.MIN, "version", Instant.MAX);
     ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, ACTIONS_EPOCH, coj);
     when(repository.findByTraineeIdAndTisReferenceInfo(any(), any(), any()))
         .thenReturn(new ArrayList<>());
@@ -219,7 +219,7 @@ class ActionServiceTest {
 
   @Test
   void shouldCompleteCojSignedActionOnProgrammeMembershipWithExistingCojAction() {
-    ConditionsOfJoiningDto coj = new ConditionsOfJoiningDto(Instant.MIN, "version", Instant.MAX);
+    ConditionsOfJoining coj = new ConditionsOfJoining(Instant.MIN, "version", Instant.MAX);
     ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, PRE_EPOCH, coj);
 
     TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);

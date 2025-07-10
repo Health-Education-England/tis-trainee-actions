@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2024 Crown Copyright (Health Education England)
+ * Copyright 2025 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -17,30 +17,19 @@
  * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
  * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
  */
 
 package uk.nhs.tis.trainee.actions.dto;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import java.time.LocalDate;
-import uk.nhs.tis.trainee.actions.mapper.ConditionsOfJoiningDeserializer;
+import java.time.Instant;
 
 /**
- * A representation of a programme membership.
+ * Conditions of Joining details.
  *
- * <p>Note that operation=DELETE records are 'unenriched' by tis-trainee-sync, so they arrive with
- * uuid instead of the tisId that records from e.g. LOAD operations arrive with.</p>
- *
- * @param id        The programme membership ID.
- * @param traineeId The trainee ID associated with the membership.
- * @param startDate The programme start date.
+ * @param signedAt The date and time when the CoJ were signed by the trainee.
+ * @param version  The version of the CoJ.
+ * @param syncedAt The date and time when the CoJ were synced back from TIS after being saved.
  */
-@JsonIgnoreProperties(ignoreUnknown = true)
-public record ProgrammeMembershipDto(@JsonAlias({"tisId", "uuid"}) String id,
-                                     @JsonAlias("personId") String traineeId, LocalDate startDate,
-                                     @JsonDeserialize(using = ConditionsOfJoiningDeserializer.class)
-                                     ConditionsOfJoining conditionsOfJoining) {
-
+public record ConditionsOfJoining(Instant signedAt, String version, Instant syncedAt) {
 }

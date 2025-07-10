@@ -20,16 +20,28 @@
  *
  */
 
-package uk.nhs.tis.trainee.actions.dto;
+package uk.nhs.tis.trainee.actions.mapper;
 
-import java.time.Instant;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import java.io.IOException;
+import uk.nhs.tis.trainee.actions.dto.ConditionsOfJoining;
 
-/**
- * A DTO for Conditions of Joining details.
- *
- * @param signedAt The date and time when the CoJ were signed by the trainee.
- * @param version  The version of the CoJ.
- * @param syncedAt The date and time when the CoJ were synced back from TIS after being saved.
- */
-public record ConditionsOfJoiningDto(Instant signedAt, String version, Instant syncedAt) {
+public class ConditionsOfJoiningDeserializer extends JsonDeserializer<ConditionsOfJoining> {
+  @Override
+  public ConditionsOfJoining deserialize(JsonParser p, DeserializationContext ctxt)
+      throws IOException {
+    String cojString = p.getValueAsString();
+    ObjectMapper objectMapper = new ObjectMapper()
+        .registerModule(new JavaTimeModule())
+        .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    return objectMapper.readValue(cojString,
+        new TypeReference<>() {
+        });
+  }
 }
