@@ -25,6 +25,7 @@ package uk.nhs.tis.trainee.actions.dto.helpers;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
@@ -36,8 +37,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.nhs.tis.trainee.actions.dto.ConditionsOfJoining;
-
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ConditionsOfJoiningDeserializerTest {
