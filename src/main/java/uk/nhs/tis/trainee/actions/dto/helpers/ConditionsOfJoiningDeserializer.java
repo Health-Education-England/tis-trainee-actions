@@ -20,7 +20,7 @@
  *
  */
 
-package uk.nhs.tis.trainee.actions.mapper;
+package uk.nhs.tis.trainee.actions.dto.helpers;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -32,7 +32,22 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.io.IOException;
 import uk.nhs.tis.trainee.actions.dto.ConditionsOfJoining;
 
+/**
+ * A deserializer for ConditionsOfJoining.
+ *
+ * <p>This deserializes a JSON string into a ConditionsOfJoining object using Jackson.</p>
+ */
 public class ConditionsOfJoiningDeserializer extends JsonDeserializer<ConditionsOfJoining> {
+
+  /**
+   * Deserialize a JSON string into a ConditionsOfJoining object. Note that a serialized value of
+   * "null" will be converted into a null object.
+   *
+   * @param p    The JsonParser to read the JSON string.
+   * @param ctxt The DeserializationContext.
+   * @return The deserialized ConditionsOfJoining object.
+   * @throws IOException If an error occurs during deserialization.
+   */
   @Override
   public ConditionsOfJoining deserialize(JsonParser p, DeserializationContext ctxt)
       throws IOException {

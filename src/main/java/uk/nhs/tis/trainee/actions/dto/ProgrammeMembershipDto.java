@@ -25,7 +25,7 @@ import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import java.time.LocalDate;
-import uk.nhs.tis.trainee.actions.mapper.ConditionsOfJoiningDeserializer;
+import uk.nhs.tis.trainee.actions.dto.helpers.ConditionsOfJoiningDeserializer;
 
 /**
  * A representation of a programme membership.
