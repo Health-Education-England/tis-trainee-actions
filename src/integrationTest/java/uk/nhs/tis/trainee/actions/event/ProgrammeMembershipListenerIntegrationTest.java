@@ -282,7 +282,7 @@ class ProgrammeMembershipListenerIntegrationTest {
     assertThat("Missing action for type: SIGN_COJ", actionOptional.isPresent(), is(true));
     Action action = actionOptional.get();
     assertThat("Unexpected completed date for SIGN_COJ.", action.completed(),
-            is(nullValue()));
+        is(nullValue()));
   }
 
   @Test
@@ -328,19 +328,18 @@ class ProgrammeMembershipListenerIntegrationTest {
           actions.addAll(found);
         });
 
-      Optional<Action> actionOptional = actions.stream()
-          .filter(a -> a.type().equals(SIGN_COJ))
-          .findFirst();
-      assertThat("Missing action for type: SIGN_COJ", actionOptional.isPresent(), is(true));
-      Action action = actionOptional.get();
-      assertThat("Unexpected action id.", action.id(), notNullValue());
-      assertThat("Unexpected trainee id.", action.traineeId(), is(traineeId));
-      assertThat("Unexpected completed date for SIGN_COJ.", action.completed(),
-            is(COJ_SYNCED.truncatedTo(ChronoUnit.MILLIS)));
+    Optional<Action> actionOptional = actions.stream()
+        .filter(a -> a.type().equals(SIGN_COJ))
+        .findFirst();
+    assertThat("Missing action for type: SIGN_COJ", actionOptional.isPresent(), is(true));
+    Action action = actionOptional.get();
+    assertThat("Unexpected action id.", action.id(), notNullValue());
+    assertThat("Unexpected trainee id.", action.traineeId(), is(traineeId));
+    assertThat("Unexpected completed date for SIGN_COJ.", action.completed(),
+        is(COJ_SYNCED.truncatedTo(ChronoUnit.MILLIS)));
 
-      TisReferenceInfo tisReference = action.tisReferenceInfo();
-      assertThat("Unexpected TIS id.", tisReference.id(), is(PROGRAMME_MEMBERSHIP_ID));
-      assertThat("Unexpected TIS type.", tisReference.type(), is(PROGRAMME_MEMBERSHIP));
-    }
-
+    TisReferenceInfo tisReference = action.tisReferenceInfo();
+    assertThat("Unexpected TIS id.", tisReference.id(), is(PROGRAMME_MEMBERSHIP_ID));
+    assertThat("Unexpected TIS type.", tisReference.type(), is(PROGRAMME_MEMBERSHIP));
+  }
 }
