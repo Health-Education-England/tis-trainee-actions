@@ -25,11 +25,11 @@ package uk.nhs.tis.trainee.actions.dto;
 import java.time.Instant;
 
 /**
- * A DTO for Conditions of Joining details.
+ * Conditions of Joining details.
  *
  * @param signedAt The date and time when the CoJ were signed by the trainee.
  * @param version  The version of the CoJ.
  * @param syncedAt The date and time when the CoJ were synced back from TIS after being saved.
  */
-public record ConditionsOfJoiningDto(Instant signedAt, String version, Instant syncedAt) {
+public record ConditionsOfJoining(Instant signedAt, String version, Instant syncedAt) {
 }

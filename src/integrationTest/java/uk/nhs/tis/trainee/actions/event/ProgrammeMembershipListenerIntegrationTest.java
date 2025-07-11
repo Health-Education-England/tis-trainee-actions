@@ -181,7 +181,7 @@ class ProgrammeMembershipListenerIntegrationTest {
               "tisId": "%s",
               "personId": "%s",
               "startDate": "%s",
-              "conditionsOfJoining": {"signedAt": "%s", "version": "1.0", "syncedAt": "%s"}
+              "conditionsOfJoining": "{\\"signedAt\\": \\"%s\\", \\"version\\": \\"1.0\\", \\"syncedAt\\": \\"%s\\"}"
             },
             "operation": "%s"
           }
@@ -231,5 +231,52 @@ class ProgrammeMembershipListenerIntegrationTest {
       assertThat("Unexpected TIS id.", tisReference.id(), is(PROGRAMME_MEMBERSHIP_ID));
       assertThat("Unexpected TIS type.", tisReference.type(), is(PROGRAMME_MEMBERSHIP));
     }
+  }
+
+  @Test
+  void shouldInsertIncompleteCojActionWhenProgrammeMembershipHasNullCoj()
+      throws JsonProcessingException {
+    String traineeId = UUID.randomUUID().toString();
+    String eventString = """
+        {
+          "record": {
+            "data": {
+              "tisId": "%s",
+              "personId": "%s",
+              "startDate": "%s",
+              "conditionsOfJoining": "null"
+            },
+            "operation": "%s"
+          }
+        }""".formatted(PROGRAMME_MEMBERSHIP_ID, traineeId, START_DATE, LOAD);
+
+    JsonNode eventJson = JsonMapper.builder()
+        .build()
+        .readTree(eventString);
+
+    sqsTemplate.send(PROGRAMME_MEMBERSHIP_SYNCED_QUEUE, eventJson);
+
+    Criteria criteria = Criteria.where("traineeId").is(traineeId);
+    Query query = Query.query(criteria);
+    List<Action> actions = new ArrayList<>();
+
+    await()
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(10))
+        .ignoreExceptions()
+        .untilAsserted(() -> {
+          List<Action> found = mongoTemplate.find(query, Action.class);
+          assertThat("Unexpected action count.", found.size(),
+              is(ActionType.getProgrammeActionTypes().size()));
+          actions.addAll(found);
+        });
+
+    Optional<Action> actionOptional = actions.stream()
+        .filter(a -> a.type().equals(SIGN_COJ))
+        .findFirst();
+    assertThat("Missing action for type: SIGN_COJ", actionOptional.isPresent(), is(true));
+    Action action = actionOptional.get();
+    assertThat("Unexpected completed date for SIGN_COJ.", action.completed(),
+            is(nullValue()));
   }
 }

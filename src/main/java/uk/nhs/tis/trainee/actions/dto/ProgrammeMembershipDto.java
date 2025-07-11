@@ -23,7 +23,9 @@ package uk.nhs.tis.trainee.actions.dto;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import java.time.LocalDate;
+import uk.nhs.tis.trainee.actions.dto.helpers.ConditionsOfJoiningDeserializer;
 
 /**
  * A representation of a programme membership.
@@ -38,6 +40,7 @@ import java.time.LocalDate;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record ProgrammeMembershipDto(@JsonAlias({"tisId", "uuid"}) String id,
                                      @JsonAlias("personId") String traineeId, LocalDate startDate,
-                                     ConditionsOfJoiningDto conditionsOfJoining) {
+                                     @JsonDeserialize(using = ConditionsOfJoiningDeserializer.class)
+                                     ConditionsOfJoining conditionsOfJoining) {
 
 }
