@@ -151,8 +151,8 @@ public class ActionService {
    */
   public Optional<ActionDto> updateAction(CojReceivedEvent event) {
     log.info("Updating action for CoJ received event: {}", event);
-    if (event.conditionsOfJoining() == null) {
-      log.warn("No CoJ data provided in the event.");
+    if (event.conditionsOfJoining() == null || event.conditionsOfJoining().syncedAt() == null) {
+      log.warn("No synced CoJ data provided in the event.");
       return Optional.empty();
     }
 

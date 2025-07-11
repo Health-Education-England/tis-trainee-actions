@@ -338,6 +338,18 @@ class ActionServiceTest {
   }
 
   @Test
+  void shouldNotCompleteCojActionIfEventHasNoSyncedAt() {
+    CojReceivedEvent event = new CojReceivedEvent(TIS_ID, TRAINEE_ID,
+        new ConditionsOfJoining(Instant.MIN, "version", null));
+
+    Optional<ActionDto> optionalAction = service.updateAction(event);
+
+    assertThat("Unexpected action presence.", optionalAction.isPresent(), is(false));
+    verifyNoInteractions(repository);
+    verifyNoInteractions(eventPublishingService);
+  }
+
+  @Test
   void shouldReturnEmptyWhenTraineeActionsNotFound() {
     when(repository.findAllByTraineeIdAndCompletedIsNullOrderByDueByAsc(TRAINEE_ID)).thenReturn(
         List.of());
