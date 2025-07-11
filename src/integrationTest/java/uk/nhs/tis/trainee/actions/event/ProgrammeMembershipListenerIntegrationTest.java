@@ -74,6 +74,7 @@ class ProgrammeMembershipListenerIntegrationTest {
   private static final Instant COJ_SYNCED = Instant.now().minusSeconds(10);
 
   private static final String PROGRAMME_MEMBERSHIP_SYNCED_QUEUE = UUID.randomUUID().toString();
+  private static final String COJ_RECEIVED_QUEUE = UUID.randomUUID().toString();
 
   @Container
   @ServiceConnection
@@ -89,6 +90,8 @@ class ProgrammeMembershipListenerIntegrationTest {
   private static void overrideProperties(DynamicPropertyRegistry registry) {
     registry.add("application.queues.programme-membership-synced",
         () -> PROGRAMME_MEMBERSHIP_SYNCED_QUEUE);
+    registry.add("application.queues.coj-received",
+        () -> COJ_RECEIVED_QUEUE);
 
     registry.add("spring.cloud.aws.region.static", localstack::getRegion);
     registry.add("spring.cloud.aws.credentials.access-key", localstack::getAccessKey);
@@ -102,6 +105,8 @@ class ProgrammeMembershipListenerIntegrationTest {
   static void setUpBeforeAll() throws IOException, InterruptedException {
     localstack.execInContainer("awslocal sqs create-queue --queue-name",
         PROGRAMME_MEMBERSHIP_SYNCED_QUEUE);
+    localstack.execInContainer("awslocal sqs create-queue --queue-name",
+        COJ_RECEIVED_QUEUE);
   }
 
   @Autowired
@@ -279,4 +284,63 @@ class ProgrammeMembershipListenerIntegrationTest {
     assertThat("Unexpected completed date for SIGN_COJ.", action.completed(),
             is(nullValue()));
   }
+
+  @Test
+  void shouldCompleteSignCojActionWhenSignCojEventReceived()
+      throws JsonProcessingException {
+    String traineeId = UUID.randomUUID().toString();
+    Action existingCojAction = new Action(null, SIGN_COJ, traineeId,
+        new Action.TisReferenceInfo(PROGRAMME_MEMBERSHIP_ID, PROGRAMME_MEMBERSHIP),
+        null, null, null);
+    mongoTemplate.insert(List.of(existingCojAction), Action.class);
+
+    //check that the action exists before sending the event
+    Criteria criteria = Criteria.where("traineeId").is(traineeId);
+    Query query = Query.query(criteria);
+    List<Action> foundExisting = mongoTemplate.find(query, Action.class);
+    assertThat("Unexpected existing action count.", foundExisting.size(), is(1));
+
+    String eventString = """
+        {
+          "tisId": "%s",
+          "personId": "%s",
+          "conditionsOfJoining": {
+            "signedAt": "%s",
+            "version": "1.0",
+            "syncedAt": "%s"
+          }
+        }""".formatted(PROGRAMME_MEMBERSHIP_ID, traineeId, Instant.MIN, COJ_SYNCED);
+
+    JsonNode eventJson = JsonMapper.builder()
+        .build()
+        .readTree(eventString);
+
+    sqsTemplate.send(COJ_RECEIVED_QUEUE, eventJson);
+
+    List<Action> actions = new ArrayList<>();
+    await()
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(10))
+        .ignoreExceptions()
+        .untilAsserted(() -> {
+          List<Action> found = mongoTemplate.find(query, Action.class);
+          assertThat("Unexpected action count.", found.size(), is(1));
+          actions.addAll(found);
+        });
+
+      Optional<Action> actionOptional = actions.stream()
+          .filter(a -> a.type().equals(SIGN_COJ))
+          .findFirst();
+      assertThat("Missing action for type: SIGN_COJ", actionOptional.isPresent(), is(true));
+      Action action = actionOptional.get();
+      assertThat("Unexpected action id.", action.id(), notNullValue());
+      assertThat("Unexpected trainee id.", action.traineeId(), is(traineeId));
+      assertThat("Unexpected completed date for SIGN_COJ.", action.completed(),
+            is(COJ_SYNCED.truncatedTo(ChronoUnit.MILLIS)));
+
+      TisReferenceInfo tisReference = action.tisReferenceInfo();
+      assertThat("Unexpected TIS id.", tisReference.id(), is(PROGRAMME_MEMBERSHIP_ID));
+      assertThat("Unexpected TIS type.", tisReference.type(), is(PROGRAMME_MEMBERSHIP));
+    }
+
 }

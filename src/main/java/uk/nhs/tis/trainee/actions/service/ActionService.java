@@ -39,6 +39,7 @@ import org.bson.types.ObjectId;
 import org.springframework.stereotype.Service;
 import uk.nhs.tis.trainee.actions.dto.AccountConfirmedEvent;
 import uk.nhs.tis.trainee.actions.dto.ActionDto;
+import uk.nhs.tis.trainee.actions.dto.CojReceivedEvent;
 import uk.nhs.tis.trainee.actions.dto.PlacementDto;
 import uk.nhs.tis.trainee.actions.dto.ProgrammeMembershipDto;
 import uk.nhs.tis.trainee.actions.event.Operation;
@@ -140,6 +141,32 @@ public class ActionService {
     List<Action> actionInserted = repository.insert(actions);
     actionInserted.forEach(eventPublishingService::publishActionUpdateEvent);
     return mapper.toDtos(actionInserted);
+  }
+
+  /**
+   * Updates the action associated with the given CoJ received event.
+   *
+   * @param event The CoJ received event containing the data to update the action.
+   * @return An Optional containing the updated ActionDto, or empty if no action was updated.
+   */
+  public Optional<ActionDto> updateAction(CojReceivedEvent event) {
+    log.info("Updating action for CoJ received event: {}", event);
+    if (event.conditionsOfJoining() == null) {
+      log.warn("No CoJ data provided in the event.");
+      return Optional.empty();
+    }
+
+    List<Action> existingActions = repository.findByTraineeIdAndTisReferenceInfo(
+        event.traineeId(), event.id(), PROGRAMME_MEMBERSHIP.toString());
+    Optional<Action> existingAction = existingActions.stream()
+        .filter(a -> a.type().equals(SIGN_COJ)).findFirst();
+    if (existingAction.isEmpty()) {
+      log.warn("No existing CoJ action found for trainee ID: {} and programme membership ID: {}",
+          event.traineeId(), event.id());
+      return Optional.empty();
+    } else {
+      return (complete(existingAction.get(), event.conditionsOfJoining().syncedAt()));
+    }
   }
 
   /**
