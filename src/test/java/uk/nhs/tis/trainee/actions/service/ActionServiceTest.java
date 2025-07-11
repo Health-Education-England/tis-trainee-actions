@@ -65,6 +65,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import uk.nhs.tis.trainee.actions.dto.AccountConfirmedEvent;
 import uk.nhs.tis.trainee.actions.dto.ActionDto;
+import uk.nhs.tis.trainee.actions.dto.CojReceivedEvent;
 import uk.nhs.tis.trainee.actions.dto.ConditionsOfJoining;
 import uk.nhs.tis.trainee.actions.dto.PlacementDto;
 import uk.nhs.tis.trainee.actions.dto.ProgrammeMembershipDto;
@@ -247,6 +248,105 @@ class ActionServiceTest {
     TisReferenceInfo refInfo = actionPublished.tisReferenceInfo();
     assertThat("Unexpected TIS id.", refInfo.id(), is(TIS_ID));
     assertThat("Unexpected TIS type.", refInfo.type(), is(PROGRAMME_MEMBERSHIP));
+  }
+
+  @Test
+  void shouldNotUpdateActionWhenNoCojDataProvided() {
+    CojReceivedEvent event = new CojReceivedEvent(TIS_ID, TRAINEE_ID, null);
+
+    Optional<ActionDto> optionalAction = service.updateAction(event);
+
+    assertThat("Unexpected action updated.", optionalAction.isPresent(), is(false));
+    verifyNoInteractions(repository);
+    verifyNoInteractions(eventPublishingService);
+  }
+
+  @Test
+  void shouldNotUpdateActionWhenNoExistingCojActionFound() {
+    CojReceivedEvent event = new CojReceivedEvent(TIS_ID, TRAINEE_ID,
+        new ConditionsOfJoining(Instant.MIN, "version", Instant.MAX));
+
+    when(repository.findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
+        String.valueOf(PROGRAMME_MEMBERSHIP))).thenReturn(Collections.emptyList());
+
+    Optional<ActionDto> optionalAction = service.updateAction(event);
+
+    assertThat("Unexpected action updated.", optionalAction.isPresent(), is(false));
+    verify(repository).findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
+        String.valueOf(PROGRAMME_MEMBERSHIP));
+    verifyNoMoreInteractions(repository);
+    verifyNoInteractions(eventPublishingService);
+  }
+
+  @Test
+  void shouldUpdateExistingCojAction() {
+    TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
+    Action existingAction = new Action(ACTION_ID, SIGN_COJ, TRAINEE_ID, tisReference,
+        PAST, FUTURE, null);
+    CojReceivedEvent event = new CojReceivedEvent(TIS_ID, TRAINEE_ID,
+        new ConditionsOfJoining(Instant.MIN, "version", Instant.MAX));
+
+    when(repository.findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
+        String.valueOf(PROGRAMME_MEMBERSHIP))).thenReturn(List.of(existingAction));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<ActionDto> optionalAction = service.updateAction(event);
+
+    assertThat("Unexpected action presence.", optionalAction.isPresent(), is(true));
+    ActionDto actionDto = optionalAction.get();
+    assertThat("Unexpected action id.", actionDto.id(), is(ACTION_ID.toString()));
+    assertThat("Unexpected action type.", actionDto.type(), is(SIGN_COJ.toString()));
+    assertThat("Unexpected trainee id.", actionDto.traineeId(), is(TRAINEE_ID));
+    assertThat("Unexpected available from date.", actionDto.availableFrom(), is(PAST));
+    assertThat("Unexpected due by date.", actionDto.dueBy(), is(FUTURE));
+    assertThat("Unexpected completed date.", actionDto.completed(), is(Instant.MAX));
+
+    TisReferenceInfo refInfo = actionDto.tisReferenceInfo();
+    assertThat("Unexpected TIS id.", refInfo.id(), is(TIS_ID));
+    assertThat("Unexpected TIS type.", refInfo.type(), is(PROGRAMME_MEMBERSHIP));
+
+    ArgumentCaptor<Action> actionCaptor = ArgumentCaptor.forClass(Action.class);
+    verify(eventPublishingService).publishActionUpdateEvent(actionCaptor.capture());
+    Action actionPublished = actionCaptor.getValue();
+
+    assertThat("Unexpected action id.", actionPublished.id(), is(ACTION_ID));
+    assertThat("Unexpected action type.", actionPublished.type(), is(SIGN_COJ));
+    assertThat("Unexpected trainee id.", actionPublished.traineeId(), is(TRAINEE_ID));
+    assertThat("Unexpected available from date.", actionPublished.availableFrom(), is(PAST));
+    assertThat("Unexpected due by date.", actionPublished.dueBy(), is(FUTURE));
+    assertThat("Unexpected completed date.", actionPublished.completed(), is(Instant.MAX));
+  }
+
+  @Test
+  void shouldNotUpdateAlreadyCompletedCojAction() {
+    TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
+    Action existingAction = new Action(ACTION_ID, SIGN_COJ, TRAINEE_ID, tisReference,
+        PAST, FUTURE, Instant.now());
+    CojReceivedEvent event = new CojReceivedEvent(TIS_ID, TRAINEE_ID,
+        new ConditionsOfJoining(Instant.MIN, "version", Instant.MAX));
+
+    when(repository.findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
+        String.valueOf(PROGRAMME_MEMBERSHIP))).thenReturn(List.of(existingAction));
+
+    Optional<ActionDto> optionalAction = service.updateAction(event);
+
+    assertThat("Unexpected action presence.", optionalAction.isPresent(), is(false));
+    verify(repository).findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
+        String.valueOf(PROGRAMME_MEMBERSHIP));
+    verifyNoMoreInteractions(repository);
+    verifyNoInteractions(eventPublishingService);
+  }
+
+  @Test
+  void shouldNotCompleteCojActionIfEventHasNoSyncedAt() {
+    CojReceivedEvent event = new CojReceivedEvent(TIS_ID, TRAINEE_ID,
+        new ConditionsOfJoining(Instant.MIN, "version", null));
+
+    Optional<ActionDto> optionalAction = service.updateAction(event);
+
+    assertThat("Unexpected action presence.", optionalAction.isPresent(), is(false));
+    verifyNoInteractions(repository);
+    verifyNoInteractions(eventPublishingService);
   }
 
   @Test

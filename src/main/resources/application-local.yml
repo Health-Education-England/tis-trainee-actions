@@ -2,6 +2,7 @@ application:
   environment: local
   queues:
     account-confirmed: ${local.sqs-path}/tis-trainee-actions-local-account-confirmed
+    coj-received: ${local.sqs-path}/tis-trainee-actions-local-coj-received
     placement-synced: ${local.sqs-path}/tis-trainee-actions-local-placement-synced
     programme-membership-synced: ${local.sqs-path}/tis-trainee-actions-local-programme-membership-synced
   sns:

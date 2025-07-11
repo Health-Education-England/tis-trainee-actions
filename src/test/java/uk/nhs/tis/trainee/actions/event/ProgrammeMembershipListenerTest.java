@@ -22,7 +22,6 @@
 package uk.nhs.tis.trainee.actions.event;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.eq;
@@ -32,6 +31,7 @@ import static org.mockito.Mockito.verify;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,6 +39,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
+import uk.nhs.tis.trainee.actions.dto.CojReceivedEvent;
+import uk.nhs.tis.trainee.actions.dto.ConditionsOfJoining;
 import uk.nhs.tis.trainee.actions.dto.ProgrammeMembershipDto;
 import uk.nhs.tis.trainee.actions.service.ActionService;
 
@@ -148,5 +150,29 @@ class ProgrammeMembershipListenerTest {
     assertThat("Unexpected ID", dto.id(), is(PROGRAMME_MEMBERSHIP_ID));
     assertThat("Unexpected trainee ID", dto.traineeId(), is(TRAINEE_ID));
     assertThat("Unexpected start date", dto.startDate(), is(START_DATE));
+  }
+
+  @Test
+  void shouldThrowExceptionWhenCojEventNull() {
+    assertThrows(IllegalArgumentException.class,
+        () -> listener.handleCojReceived(null));
+  }
+
+  @Test
+  void shouldThrowExceptionWhenCojDataNull() {
+    CojReceivedEvent event = new CojReceivedEvent(PROGRAMME_MEMBERSHIP_ID, TRAINEE_ID, null);
+
+    assertThrows(IllegalArgumentException.class,
+        () -> listener.handleCojReceived(event));
+  }
+
+  @Test
+  void shouldUpdateActionWhenCojEventValid() {
+    ConditionsOfJoining coj = new ConditionsOfJoining(Instant.now(), "1.0", Instant.now());
+    CojReceivedEvent event = new CojReceivedEvent(PROGRAMME_MEMBERSHIP_ID, TRAINEE_ID, coj);
+
+    listener.handleCojReceived(event);
+
+    verify(service).updateAction(event);
   }
 }

@@ -24,6 +24,7 @@ package uk.nhs.tis.trainee.actions.event;
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import uk.nhs.tis.trainee.actions.dto.CojReceivedEvent;
 import uk.nhs.tis.trainee.actions.dto.ProgrammeMembershipDto;
 import uk.nhs.tis.trainee.actions.service.ActionService;
 
@@ -57,4 +58,21 @@ public class ProgrammeMembershipListener {
       throw new IllegalArgumentException("Skipping event handling due to incomplete event data.");
     }
   }
+
+  /**
+   * Handle a COJ-received event.
+   *
+   * @param event The event to handle.
+   */
+  @SqsListener("${application.queues.coj-received}")
+  public void handleCojReceived(CojReceivedEvent event) {
+    log.debug("CoJ received: {}", event);
+
+    if (event != null && event.conditionsOfJoining() != null) {
+      actionService.updateAction(event);
+    } else {
+      throw new IllegalArgumentException("Skipping event handling due to incomplete event data.");
+    }
+  }
+
 }
