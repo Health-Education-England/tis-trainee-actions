@@ -26,6 +26,9 @@ import java.util.EnumSet;
 import java.util.Set;
 import lombok.Getter;
 
+/**
+ * An enumeration of the lifecycle states of a form.
+ */
 public enum FormLifecycleState {
   APPROVED,
   DELETED,

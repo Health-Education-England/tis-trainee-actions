@@ -29,6 +29,7 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.testcontainers.containers.localstack.LocalStackContainer.Service.SQS;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
+import static uk.nhs.tis.trainee.actions.service.ActionService.FORM_PROGRAMME_MEMBERSHIP_ID_FIELD;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import io.awspring.cloud.sqs.operations.SqsTemplate;
@@ -127,9 +128,10 @@ public class FormListenerIntegrationTest {
           "formType": "%s",
           "eventDate": "%s",
           "formContentDto": {
-            "programmeMembershipId": "%s"
+            "%s": "%s"
           }
-        }""".formatted(formStatus, TRAINEE_ID, formType, Instant.now(), PROGRAMME_MEMBERSHIP_ID);
+        }""".formatted(formStatus, TRAINEE_ID, formType, Instant.now(),
+        FORM_PROGRAMME_MEMBERSHIP_ID_FIELD, PROGRAMME_MEMBERSHIP_ID);
 
     JsonNode eventJson = JsonMapper.builder().build().readTree(eventString);
     sqsTemplate.send(FORM_UPDATED_QUEUE, eventJson);
@@ -176,9 +178,10 @@ public class FormListenerIntegrationTest {
           "formType": "%s",
           "eventDate": "%s",
           "formContentDto": {
-            "programmeMembershipId": "%s"
+            "%s": "%s"
           }
-        }""".formatted(formStatus, TRAINEE_ID, formType, Instant.now(), PROGRAMME_MEMBERSHIP_ID);
+        }""".formatted(formStatus, TRAINEE_ID, formType, Instant.now(),
+        FORM_PROGRAMME_MEMBERSHIP_ID_FIELD, PROGRAMME_MEMBERSHIP_ID);
 
     JsonNode eventJson = JsonMapper.builder().build().readTree(eventString);
     sqsTemplate.send(FORM_UPDATED_QUEUE, eventJson);

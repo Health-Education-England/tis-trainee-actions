@@ -299,7 +299,7 @@ public class ActionService {
         .filter(a -> a.type().equals(formAction)).findFirst();
     if (existingAction.isEmpty()) {
       log.warn("No existing {} action found for trainee ID: {} and programme membership ID: {}",
-           formAction, event.traineeId(), pmUuid);
+          formAction, event.traineeId(), pmUuid);
       return Optional.empty();
     } else {
       FormLifecycleState lifecycleState;
@@ -375,7 +375,7 @@ public class ActionService {
   private Optional<ActionDto> updateActionStatus(Action action, boolean complete,
       Instant completedAt) {
     if ((action.completed() != null && complete)
-       || (action.completed() == null && !complete)) {
+        || (action.completed() == null && !complete)) {
       log.info("Skipping action completion = {} as the action already had that status.", complete);
       return Optional.empty();
     }
@@ -411,7 +411,7 @@ public class ActionService {
   /**
    * Un-complete an action.
    *
-   * @param action      The action to un-complete.
+   * @param action The action to un-complete.
    * @return The uncompleted action, or empty if not found.
    */
   private Optional<ActionDto> uncomplete(Action action) {
