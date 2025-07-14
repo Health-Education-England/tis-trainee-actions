@@ -20,41 +20,32 @@
  *
  */
 
-package uk.nhs.tis.trainee.actions.event;
+package uk.nhs.tis.trainee.actions.dto.enumeration;
 
-import io.awspring.cloud.sqs.annotation.SqsListener;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
-import uk.nhs.tis.trainee.actions.dto.FormUpdateEvent;
+import java.util.EnumSet;
+import java.util.Set;
+import lombok.Getter;
 
-/**
- * A listener for Form Update Events.
- */
-@Slf4j
-@Component
-public class FormEventListener {
+public enum FormLifecycleState {
+  APPROVED,
+  DELETED,
+  DRAFT,
+  REJECTED,
+  SUBMITTED,
+  UNSUBMITTED,
+  WITHDRAWN;
 
   /**
-   * Listen for Form Updated Events on the SQS queue.
-   *
-   * @param event the S3 Event
-   * @throws IOException when the form contents could not be read, or were not correctly
-   *                     structured.
+   * The set of states that should complete the sign-form action.
    */
-  @SqsListener(value = "${application.queues.form-updated}")
-  void handleFormUpdate(FormUpdateEvent event) throws IOException {
-    log.info("Handling form update event {}.", event);
+  @Getter
+  private static final Set<FormLifecycleState> completeSignFormStates = EnumSet.of(
+      APPROVED, SUBMITTED);
 
-    Map<String, Object> templateVariables = new HashMap<>();
-    templateVariables.put("formName", event.formName());
-    templateVariables.put("formType", event.formType());
-    templateVariables.put("lifecycleState", event.lifecycleState());
-    templateVariables.put("eventDate", event.eventDate());
-
-    String traineeId = event.traineeId();
-
-  }
+  /**
+   * The set of states that should uncomplete the sign-form action.
+   */
+  @Getter
+  private static final Set<FormLifecycleState> uncompleteSignFormStates = EnumSet.of(
+      DELETED, DRAFT, REJECTED, UNSUBMITTED, WITHDRAWN);
 }

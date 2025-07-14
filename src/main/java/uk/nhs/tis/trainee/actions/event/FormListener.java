@@ -20,33 +20,40 @@
  *
  */
 
-package uk.nhs.tis.trainee.actions.dto;
+package uk.nhs.tis.trainee.actions.event;
 
-import com.fasterxml.jackson.annotation.JsonAnyGetter;
-import com.fasterxml.jackson.annotation.JsonAnySetter;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import java.util.HashMap;
-import java.util.Map;
+import io.awspring.cloud.sqs.annotation.SqsListener;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+import uk.nhs.tis.trainee.actions.dto.FormUpdateEvent;
+import uk.nhs.tis.trainee.actions.service.ActionService;
 
 /**
- * A DTO for form content, which can be any arbitrary json.
- *
- * <p>The serialization ignores the 'fields' property to avoid creating an artificial top-level
- * element.
+ * A listener for Form Update Events.
  */
-public class FormContentDto {
+@Slf4j
+@Component
+public class FormListener {
 
-  @JsonIgnore
-  public Map<String, Object> fields = new HashMap<>();
+  private final ActionService actionService;
 
-  // "any getter" needed for serialization
-  @JsonAnyGetter
-  public Map<String, Object> any() {
-    return fields;
+  public FormListener(ActionService actionService) {
+    this.actionService = actionService;
   }
 
-  @JsonAnySetter
-  public void set(String name, Object value) {
-    fields.put(name, value);
+  /**
+   * Listen for Form Updated Events on the SQS queue.
+   *
+   * @param event  The form update event containing the trainee ID and other details.
+   */
+  @SqsListener(value = "${application.queues.form-updated}")
+  void handleFormUpdate(FormUpdateEvent event) {
+    log.debug("Handling form update event {}.", event);
+
+    if (event != null) {
+      actionService.updateAction(event);
+    } else {
+      throw new IllegalArgumentException("Skipping event handling due to incomplete event data.");
+    }
   }
 }

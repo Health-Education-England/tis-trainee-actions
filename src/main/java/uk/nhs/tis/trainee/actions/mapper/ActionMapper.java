@@ -78,6 +78,15 @@ public interface ActionMapper {
   Action complete(Action action, Instant completedAt);
 
   /**
+   * Uncomplete the given action.
+   *
+   * @param action The action to uncomplete.
+   * @return The uncompleted action.
+   */
+  @Mapping(target = "completed", ignore = true)
+  Action uncomplete(Action action);
+
+  /**
    * Create an action using Programme Membership data.
    *
    * @param dto  The Programme Membership to retrieve data from.

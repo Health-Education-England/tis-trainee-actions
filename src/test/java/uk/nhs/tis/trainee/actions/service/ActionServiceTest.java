@@ -40,6 +40,7 @@ import static org.mockito.Mockito.when;
 import static uk.nhs.tis.trainee.actions.model.ActionType.REGISTER_TSS;
 import static uk.nhs.tis.trainee.actions.model.ActionType.REVIEW_DATA;
 import static uk.nhs.tis.trainee.actions.model.ActionType.SIGN_COJ;
+import static uk.nhs.tis.trainee.actions.model.ActionType.SIGN_FORM_R_PART_A;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PERSON;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
@@ -52,6 +53,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -60,15 +62,20 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import uk.nhs.tis.trainee.actions.dto.AccountConfirmedEvent;
 import uk.nhs.tis.trainee.actions.dto.ActionDto;
 import uk.nhs.tis.trainee.actions.dto.CojReceivedEvent;
 import uk.nhs.tis.trainee.actions.dto.ConditionsOfJoining;
+import uk.nhs.tis.trainee.actions.dto.FormUpdateEvent;
 import uk.nhs.tis.trainee.actions.dto.PlacementDto;
 import uk.nhs.tis.trainee.actions.dto.ProgrammeMembershipDto;
+import uk.nhs.tis.trainee.actions.dto.enumeration.FormLifecycleState;
 import uk.nhs.tis.trainee.actions.event.Operation;
 import uk.nhs.tis.trainee.actions.mapper.ActionMapperImpl;
 import uk.nhs.tis.trainee.actions.model.Action;
@@ -347,6 +354,190 @@ class ActionServiceTest {
     assertThat("Unexpected action presence.", optionalAction.isPresent(), is(false));
     verifyNoInteractions(repository);
     verifyNoInteractions(eventPublishingService);
+  }
+
+  @Test
+  void shouldNotUpdateActionWhenFormEventTraineeIdNull() {
+    FormUpdateEvent event = new FormUpdateEvent("form name", "SUBMITTED", null,
+        "formr-a", Instant.now(), Map.of("programmeMembershipId", TIS_ID));
+
+    Optional<ActionDto> optionalAction = service.updateAction(event);
+
+    assertThat("Unexpected action presence.", optionalAction.isPresent(), is(false));
+    verifyNoInteractions(repository);
+    verifyNoInteractions(eventPublishingService);
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(strings = "unknown form type")
+  void shouldNotUpdateActionWhenFormActionTypeInvalid(String formType) {
+    FormUpdateEvent event = new FormUpdateEvent("form name", "SUBMITTED", TRAINEE_ID,
+        formType, Instant.now(), Map.of("programmeMembershipId", TIS_ID));
+
+    Optional<ActionDto> optionalAction = service.updateAction(event);
+
+    assertThat("Unexpected action presence.", optionalAction.isPresent(), is(false));
+    verifyNoInteractions(repository);
+    verifyNoInteractions(eventPublishingService);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"formr-a", "formr-b"})
+  void shouldNotUpdateActionWhenFormContentMissing(String formType) {
+    FormUpdateEvent event = new FormUpdateEvent("form name", "SUBMITTED", TRAINEE_ID,
+        formType, Instant.now(), null);
+
+    Optional<ActionDto> optionalAction = service.updateAction(event);
+
+    assertThat("Unexpected action presence.", optionalAction.isPresent(), is(false));
+    verifyNoInteractions(repository);
+    verifyNoInteractions(eventPublishingService);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"formr-a", "formr-b"})
+  void shouldNotUpdateActionWhenFormProgrammeMembershipIdMissing(String formType) {
+    FormUpdateEvent event = new FormUpdateEvent("form name", "SUBMITTED", TRAINEE_ID,
+        formType, Instant.now(), Map.of("some field", "some value"));
+
+    Optional<ActionDto> optionalAction = service.updateAction(event);
+
+    assertThat("Unexpected action presence.", optionalAction.isPresent(), is(false));
+    verifyNoInteractions(repository);
+    verifyNoInteractions(eventPublishingService);
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = FormLifecycleState.class)
+  void shouldNotUpdateActionWhenNoExistingFormActionFound(FormLifecycleState formState) {
+    FormUpdateEvent event = new FormUpdateEvent("form name", formState.name(), TRAINEE_ID,
+        "formr-a", Instant.now(), Map.of("programmeMembershipId", TIS_ID));
+
+    when(repository.findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
+        PROGRAMME_MEMBERSHIP.toString())).thenReturn(Collections.emptyList());
+
+    Optional<ActionDto> optionalAction = service.updateAction(event);
+
+    assertThat("Unexpected action presence.", optionalAction.isPresent(), is(false));
+    verify(repository).findByTraineeIdAndTisReferenceInfo(any(), any(), any());
+    verifyNoMoreInteractions(repository);
+    verifyNoInteractions(eventPublishingService);
+  }
+
+  @ParameterizedTest
+  @EnumSource(FormLifecycleState.class)
+  void shouldNotUpdateActionWhenFormStateUnchanged(FormLifecycleState formState) {
+    FormUpdateEvent event = new FormUpdateEvent("form name", formState.name(), TRAINEE_ID,
+        "formr-a", Instant.now(), Map.of("programmeMembershipId", TIS_ID));
+    TisReferenceInfo tisReference = new TisReferenceInfo(TRAINEE_ID, PERSON);
+    Instant completedAt = null;
+    if (FormLifecycleState.getCompleteSignFormStates().contains(formState)) {
+      completedAt = Instant.now();
+    }
+    Action existingAction = new Action(ACTION_ID, SIGN_FORM_R_PART_A, TRAINEE_ID,
+        tisReference, PAST, FUTURE, completedAt);
+    when(repository.findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
+        PROGRAMME_MEMBERSHIP.toString())).thenReturn(List.of(existingAction));
+
+    Optional<ActionDto> optionalAction = service.updateAction(event);
+
+    assertThat("Unexpected action presence.", optionalAction.isPresent(), is(false));
+    verify(repository).findByTraineeIdAndTisReferenceInfo(any(), any(), any());
+    verifyNoMoreInteractions(repository);
+    verifyNoInteractions(eventPublishingService);
+  }
+
+  @Test
+  void shouldNotUpdateActionWhenFormStateUndefined() {
+    FormUpdateEvent event = new FormUpdateEvent("form name", "UNDEFINED STATE", TRAINEE_ID,
+        "formr-a", Instant.now(), Map.of("programmeMembershipId", TIS_ID));
+    TisReferenceInfo tisReference = new TisReferenceInfo(TRAINEE_ID, PERSON);
+    Action existingAction = new Action(ACTION_ID, SIGN_FORM_R_PART_A, TRAINEE_ID,
+        tisReference, PAST, FUTURE, Instant.now());
+    when(repository.findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
+        PROGRAMME_MEMBERSHIP.toString())).thenReturn(List.of(existingAction));
+
+    Optional<ActionDto> optionalAction = service.updateAction(event);
+
+    assertThat("Unexpected action presence.", optionalAction.isPresent(), is(false));
+    verify(repository).findByTraineeIdAndTisReferenceInfo(any(), any(), any());
+    verifyNoMoreInteractions(repository);
+    verifyNoInteractions(eventPublishingService);
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      formr-a | SUBMITTED
+      formr-a | APPROVED
+      formr-b | SUBMITTED
+      formr-b | APPROVED
+      """)
+  void shouldCompleteActionWhenFormStateIsComplete(String formType, String formState) {
+    FormUpdateEvent event = new FormUpdateEvent("form name", formState, TRAINEE_ID,
+        formType, Instant.now(), Map.of("programmeMembershipId", TIS_ID));
+    TisReferenceInfo tisReference = new TisReferenceInfo(TRAINEE_ID, PERSON);
+    ActionType actionType = ActionType.getFormActionType(formType);
+    Action existingAction = new Action(ACTION_ID, actionType, TRAINEE_ID,
+        tisReference, PAST, FUTURE, null);
+
+    when(repository.findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
+        PROGRAMME_MEMBERSHIP.toString())).thenReturn(List.of(existingAction));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<ActionDto> optionalAction = service.updateAction(event);
+
+    assertThat("Unexpected action presence.", optionalAction.isPresent(), is(true));
+    ActionDto actionDto = optionalAction.get();
+    assertThat("Unexpected action id.", actionDto.id(), is(ACTION_ID.toString()));
+    assertThat("Unexpected completed date.", actionDto.completed(), notNullValue());
+
+    ArgumentCaptor<Action> actionCaptor = ArgumentCaptor.forClass(Action.class);
+    verify(repository).save(actionCaptor.capture());
+    verify(eventPublishingService).publishActionUpdateEvent(actionCaptor.capture());
+
+    Action updatedAction = actionCaptor.getValue();
+    assertThat("Unexpected completed date.", updatedAction.completed(), notNullValue());
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      formr-a | DELETED
+      formr-a | DRAFT
+      formr-a | REJECTED
+      formr-a | UNSUBMITTED
+      formr-a | WITHDRAWN
+      formr-b | DELETED
+      formr-b | DRAFT
+      formr-b | REJECTED
+      formr-b | UNSUBMITTED
+      formr-b | WITHDRAWN
+      """)
+  void shouldUncompleteActionWhenFormStateIsUncomplete(String formType, String formState) {
+    FormUpdateEvent event = new FormUpdateEvent("form name", formState, TRAINEE_ID,
+        formType, Instant.now(), Map.of("programmeMembershipId", TIS_ID));
+    TisReferenceInfo tisReference = new TisReferenceInfo(TRAINEE_ID, PERSON);
+    ActionType actionType = ActionType.getFormActionType(formType);
+    Action existingAction = new Action(ACTION_ID, actionType, TRAINEE_ID,
+        tisReference, PAST, FUTURE, Instant.now());
+
+    when(repository.findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TIS_ID,
+        PROGRAMME_MEMBERSHIP.toString())).thenReturn(List.of(existingAction));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<ActionDto> optionalAction = service.updateAction(event);
+
+    assertThat("Unexpected action presence.", optionalAction.isPresent(), is(true));
+    ActionDto actionDto = optionalAction.get();
+    assertThat("Unexpected action id.", actionDto.id(), is(ACTION_ID.toString()));
+    assertThat("Unexpected completed date.", actionDto.completed(), nullValue());
+
+    ArgumentCaptor<Action> actionCaptor = ArgumentCaptor.forClass(Action.class);
+    verify(repository).save(actionCaptor.capture());
+    verify(eventPublishingService).publishActionUpdateEvent(actionCaptor.capture());
+
+    Action updatedAction = actionCaptor.getValue();
+    assertThat("Unexpected completed date.", updatedAction.completed(), nullValue());
   }
 
   @Test
