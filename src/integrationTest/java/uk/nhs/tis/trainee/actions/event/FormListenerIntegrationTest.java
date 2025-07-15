@@ -67,6 +67,7 @@ public class FormListenerIntegrationTest {
   private static final String PROGRAMME_MEMBERSHIP_ID = UUID.randomUUID().toString();
   private static final LocalDate NOW = LocalDate.now();
   private static final LocalDate START_DATE = NOW.plusDays(1);
+  private static final Instant FORM_UPDATED_TIME = Instant.now();
   private static final String FORM_UPDATED_QUEUE = UUID.randomUUID().toString();
 
   @Container
@@ -130,7 +131,7 @@ public class FormListenerIntegrationTest {
           "formContentDto": {
             "%s": "%s"
           }
-        }""".formatted(formStatus, TRAINEE_ID, formType, Instant.now(),
+        }""".formatted(formStatus, TRAINEE_ID, formType, FORM_UPDATED_TIME,
         FORM_PROGRAMME_MEMBERSHIP_ID_FIELD, PROGRAMME_MEMBERSHIP_ID);
 
     JsonNode eventJson = JsonMapper.builder().build().readTree(eventString);
@@ -148,7 +149,7 @@ public class FormListenerIntegrationTest {
           assertThat("Unexpected action count.", found.size(), is(1));
 
           Action action = found.get(0);
-          assertThat("Unexpected completed date.", action.completed(), notNullValue());
+          assertThat("Unexpected completed date.", action.completed(), is(FORM_UPDATED_TIME));
         });
   }
 
@@ -180,7 +181,7 @@ public class FormListenerIntegrationTest {
           "formContentDto": {
             "%s": "%s"
           }
-        }""".formatted(formStatus, TRAINEE_ID, formType, Instant.now(),
+        }""".formatted(formStatus, TRAINEE_ID, formType, FORM_UPDATED_TIME,
         FORM_PROGRAMME_MEMBERSHIP_ID_FIELD, PROGRAMME_MEMBERSHIP_ID);
 
     JsonNode eventJson = JsonMapper.builder().build().readTree(eventString);
@@ -201,6 +202,4 @@ public class FormListenerIntegrationTest {
           assertThat("Unexpected completed date.", action.completed(), nullValue());
         });
   }
-
-
 }

@@ -474,8 +474,9 @@ class ActionServiceTest {
       formr-b | APPROVED
       """)
   void shouldCompleteActionWhenFormStateIsComplete(String formType, String formState) {
+    Instant completedAt = Instant.now();
     FormUpdateEvent event = new FormUpdateEvent("form name", formState, TRAINEE_ID,
-        formType, Instant.now(), Map.of("programmeMembershipId", TIS_ID));
+        formType, completedAt, Map.of("programmeMembershipId", TIS_ID));
     TisReferenceInfo tisReference = new TisReferenceInfo(TRAINEE_ID, PERSON);
     ActionType actionType = ActionType.getFormActionType(formType);
     Action existingAction = new Action(ACTION_ID, actionType, TRAINEE_ID,
@@ -490,14 +491,14 @@ class ActionServiceTest {
     assertThat("Unexpected action presence.", optionalAction.isPresent(), is(true));
     ActionDto actionDto = optionalAction.get();
     assertThat("Unexpected action id.", actionDto.id(), is(ACTION_ID.toString()));
-    assertThat("Unexpected completed date.", actionDto.completed(), notNullValue());
+    assertThat("Unexpected completed date.", actionDto.completed(), is(completedAt));
 
     ArgumentCaptor<Action> actionCaptor = ArgumentCaptor.forClass(Action.class);
     verify(repository).save(actionCaptor.capture());
     verify(eventPublishingService).publishActionUpdateEvent(actionCaptor.capture());
 
     Action updatedAction = actionCaptor.getValue();
-    assertThat("Unexpected completed date.", updatedAction.completed(), notNullValue());
+    assertThat("Unexpected completed date.", updatedAction.completed(), is(completedAt));
   }
 
   @ParameterizedTest

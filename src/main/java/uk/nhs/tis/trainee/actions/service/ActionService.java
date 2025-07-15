@@ -309,7 +309,7 @@ public class ActionService {
         lifecycleState = null;
       }
       if (FormLifecycleState.getCompleteSignFormStates().contains(lifecycleState)) {
-        return (complete(existingAction.get(), null));
+        return (complete(existingAction.get(), event.eventDate()));
       } else if (FormLifecycleState.getUncompleteSignFormStates().contains(lifecycleState)) {
         return (uncomplete(existingAction.get()));
       } else {
