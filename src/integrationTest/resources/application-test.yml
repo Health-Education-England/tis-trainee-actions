@@ -2,6 +2,7 @@ application:
   queues:
     account-confirmed: dummy
     coj-received: dummy
+    form-updated: dummy
     placement-synced: dummy
     programme-membership-synced: dummy
   sns:

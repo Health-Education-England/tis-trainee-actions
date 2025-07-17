@@ -40,8 +40,10 @@ import org.springframework.stereotype.Service;
 import uk.nhs.tis.trainee.actions.dto.AccountConfirmedEvent;
 import uk.nhs.tis.trainee.actions.dto.ActionDto;
 import uk.nhs.tis.trainee.actions.dto.CojReceivedEvent;
+import uk.nhs.tis.trainee.actions.dto.FormUpdateEvent;
 import uk.nhs.tis.trainee.actions.dto.PlacementDto;
 import uk.nhs.tis.trainee.actions.dto.ProgrammeMembershipDto;
+import uk.nhs.tis.trainee.actions.dto.enumeration.FormLifecycleState;
 import uk.nhs.tis.trainee.actions.event.Operation;
 import uk.nhs.tis.trainee.actions.mapper.ActionMapper;
 import uk.nhs.tis.trainee.actions.model.Action;
@@ -58,6 +60,7 @@ public class ActionService {
   public static final LocalDate ACTIONS_EPOCH = LocalDate.of(2024, 8, 1);
   public static final List<String> PLACEMENT_TYPES_TO_ACT_ON
       = List.of("In post", "In post - Acting up", "In Post - Extension");
+  public static final String FORM_PROGRAMME_MEMBERSHIP_ID_FIELD = "programmeMembershipId";
 
   private final ActionRepository repository;
   private final ActionMapper mapper;
@@ -275,6 +278,49 @@ public class ActionService {
   }
 
   /**
+   * Updates the action associated with the given Form update event.
+   *
+   * @param event The form update event containing the data to update the action.
+   * @return An Optional containing the updated ActionDto, or empty if no action was updated.
+   */
+  public Optional<ActionDto> updateAction(FormUpdateEvent event) {
+    log.info("Updating action for form updated event: {}", event);
+    ActionType formAction = ActionType.getFormActionType(event.formType());
+    if (event.traineeId() == null || formAction == null || event.formContentDto() == null
+        || event.formContentDto().get(FORM_PROGRAMME_MEMBERSHIP_ID_FIELD) == null) {
+      log.warn("No Form data provided in the event.");
+      return Optional.empty();
+    }
+
+    String pmUuid = event.formContentDto().get(FORM_PROGRAMME_MEMBERSHIP_ID_FIELD).toString();
+    List<Action> existingActions = repository.findByTraineeIdAndTisReferenceInfo(
+        event.traineeId(), pmUuid, PROGRAMME_MEMBERSHIP.toString());
+    Optional<Action> existingAction = existingActions.stream()
+        .filter(a -> a.type().equals(formAction)).findFirst();
+    if (existingAction.isEmpty()) {
+      log.warn("No existing {} action found for trainee ID: {} and programme membership ID: {}",
+          formAction, event.traineeId(), pmUuid);
+      return Optional.empty();
+    } else {
+      FormLifecycleState lifecycleState;
+      try {
+        lifecycleState = FormLifecycleState.valueOf(event.lifecycleState());
+      } catch (IllegalArgumentException e) {
+        lifecycleState = null;
+      }
+      if (FormLifecycleState.getCompleteSignFormStates().contains(lifecycleState)) {
+        return (complete(existingAction.get(), event.eventDate()));
+      } else if (FormLifecycleState.getUncompleteSignFormStates().contains(lifecycleState)) {
+        return (uncomplete(existingAction.get()));
+      } else {
+        log.warn("Form lifecycle state {} is not handled for action update.",
+            event.lifecycleState());
+        return Optional.empty();
+      }
+    }
+  }
+
+  /**
    * Add action to list of actions if it is due after the actions epoch.
    *
    * @param action  The action to process.
@@ -322,26 +368,54 @@ public class ActionService {
    * Complete an action.
    *
    * @param action      The action to complete.
+   * @param complete    Whether to complete the action or not.
+   * @param completedAt The timestamp when the action was completed. If null, current time is used.
+   * @return The completed action, or empty if not found.
+   */
+  private Optional<ActionDto> updateActionStatus(Action action, boolean complete,
+      Instant completedAt) {
+    if ((action.completed() != null && complete)
+        || (action.completed() == null && !complete)) {
+      log.info("Skipping action completion = {} as the action already had that status.", complete);
+      return Optional.empty();
+    }
+
+    Action updatedAction;
+    if (complete) {
+      if (completedAt == null) {
+        updatedAction = mapper.complete(action);
+      } else {
+        updatedAction = mapper.complete(action, completedAt);
+      }
+    } else {
+      updatedAction = mapper.uncomplete(action);
+    }
+    updatedAction = repository.save(updatedAction);
+    eventPublishingService.publishActionUpdateEvent(updatedAction);
+    log.info("Action {} marked as completed = {} at {}.", updatedAction.id(),
+        complete, updatedAction.completed());
+    return Optional.of(mapper.toDto(updatedAction));
+  }
+
+  /**
+   * Complete an action.
+   *
+   * @param action      The action to complete.
    * @param completedAt The timestamp when the action was completed. If null, current time is used.
    * @return The completed action, or empty if not found.
    */
   private Optional<ActionDto> complete(Action action, Instant completedAt) {
-    if (action.completed() != null) {
-      log.info("Skipping action completion as the action was already complete.");
-      return Optional.empty();
-    }
+    return updateActionStatus(action, true, completedAt);
+  }
 
-    Action completedAction;
-    if (completedAt == null) {
-      completedAction = mapper.complete(action);
-    } else {
-      completedAction = mapper.complete(action, completedAt);
-    }
-    completedAction = repository.save(completedAction);
-    eventPublishingService.publishActionUpdateEvent(completedAction);
-    log.info("Action {} marked as completed at {}.", completedAction.id(),
-        completedAction.completed());
-    return Optional.of(mapper.toDto(completedAction));
+  /**
+   * Un-complete an action.
+   *
+   * @param action The action to un-complete.
+   * @return The uncompleted action, or empty if not found.
+   */
+  private Optional<ActionDto> uncomplete(Action action) {
+    return updateActionStatus(action, false, null);
   }
 
   /**

@@ -3,6 +3,7 @@ application:
   queues:
     account-confirmed: ${local.sqs-path}/tis-trainee-actions-local-account-confirmed
     coj-received: ${local.sqs-path}/tis-trainee-actions-local-coj-received
+    form-updated: ${local.sqs-path}/tis-trainee-actions-local-form-updated
     placement-synced: ${local.sqs-path}/tis-trainee-actions-local-placement-synced
     programme-membership-synced: ${local.sqs-path}/tis-trainee-actions-local-programme-membership-synced
   sns:

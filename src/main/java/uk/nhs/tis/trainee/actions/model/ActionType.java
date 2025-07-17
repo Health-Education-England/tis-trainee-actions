@@ -65,4 +65,23 @@ public enum ActionType {
   @Getter
   private static final Set<ActionType> userCompletableActionTypes = EnumSet.of(
       REVIEW_DATA);
+
+  /**
+   * Get the ActionType for a given form type.
+   *
+   * @param formType The form type string, e.g. "formr-a" or "formr-b".
+   * @return The corresponding ActionType, or null if not found.
+   */
+  public static ActionType getFormActionType(String formType) {
+    if (formType == null) {
+      return null;
+    }
+    if (formType.equalsIgnoreCase("formr-a")) {
+      return SIGN_FORM_R_PART_A;
+    } else if (formType.equalsIgnoreCase("formr-b")) {
+      return SIGN_FORM_R_PART_B;
+    } else {
+      return null;
+    }
+  }
 }
