@@ -117,8 +117,8 @@ public class ActionResource {
    * @param traineeId   The trainee TIS ID.
    * @param programmeId The programme membership ID.
    * @return A list of all actions associated with the trainee and programme membership, which may
-   * be empty if the programme membership or trainee were not found, but otherwise should contain an
-   * ActionDto for each programmeActionTypes and personActionTypes ActionType.
+   *         be empty if the programme membership or trainee were not found, but otherwise should
+   *         contain an ActionDto for each programmeActionTypes and personActionTypes ActionType.
    */
   @GetMapping("/{traineeId}/{programmeId}")
   public ResponseEntity<List<ActionDto>> getTraineeProgrammeActions(

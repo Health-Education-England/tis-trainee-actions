@@ -367,6 +367,7 @@ public class ActionService {
 
   /**
    * Find all actions associated with a given trainee ID and programme membership ID.
+   *
    * @param traineeId             The ID of the trainee to get actions for.
    * @param programmeMembershipId The ID of the programme membership to get actions for.
    * @return The found actions, empty if no actions found.
