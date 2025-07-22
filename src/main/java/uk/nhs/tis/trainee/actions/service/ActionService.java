@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
 import org.springframework.stereotype.Service;
@@ -362,6 +363,24 @@ public class ActionService {
     List<Action> actions = repository.findAllByTraineeIdAndCompletedIsNullOrderByDueByAsc(
         traineeId);
     return mapper.toDtos(actions);
+  }
+
+  /**
+   * Find all actions associated with a given trainee ID and programme membership ID.
+   *
+   * @param traineeId             The ID of the trainee to get actions for.
+   * @param programmeMembershipId The ID of the programme membership to get actions for.
+   * @return The found actions, empty if no actions found.
+   */
+  public List<ActionDto> findTraineeProgrammeMembershipActions(String traineeId,
+      String programmeMembershipId) {
+    List<Action> programmeActions = repository.findByTraineeIdAndTisReferenceInfo(
+        traineeId, programmeMembershipId, PROGRAMME_MEMBERSHIP.toString());
+    List<Action> traineeActions = repository.findByTraineeIdAndTisReferenceInfo(
+        traineeId, traineeId, PERSON.toString());
+    List<Action> allActions = Stream.concat(programmeActions.stream(), traineeActions.stream())
+        .toList();
+    return mapper.toDtos(allActions);
   }
 
   /**

@@ -26,7 +26,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static uk.nhs.tis.trainee.actions.model.ActionType.REGISTER_TSS;
 import static uk.nhs.tis.trainee.actions.model.ActionType.REVIEW_DATA;
+import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PERSON;
+import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 
 import java.nio.charset.StandardCharsets;
@@ -198,6 +201,59 @@ class ActionResourceIntegrationTest {
         .andExpect(jsonPath("$.tisReferenceInfo.type").value(PROGRAMME_MEMBERSHIP.toString()))
         .andExpect(jsonPath("$.dueBy").value(NOW.toString()))
         .andExpect(jsonPath("$.completed").isNotEmpty());
+  }
+
+  @Test
+  void shouldReturnEmptyArrayWhenNoTraineeProgrammeActionsFound() throws Exception {
+    mockMvc.perform(get("/api/action/{traineeId}/{programmeId}", TRAINEE_ID, TIS_ID_1))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$").isArray())
+        .andExpect(jsonPath("$").isEmpty());
+  }
+
+  @Test
+  void shouldReturnProgrammeAndPersonActionsWhenFound() throws Exception {
+    TisReferenceInfo programmeRef = new TisReferenceInfo(TIS_ID_1, PROGRAMME_MEMBERSHIP);
+    Action programmeAction = new Action(ObjectId.get(), REVIEW_DATA, TRAINEE_ID, programmeRef,
+        PAST, FUTURE, null);
+
+    TisReferenceInfo personRef = new TisReferenceInfo(TRAINEE_ID, PERSON);
+    Action personAction = new Action(ObjectId.get(), REGISTER_TSS, TRAINEE_ID, personRef,
+        null, null, Instant.now());
+
+    //should not be returned
+    TisReferenceInfo placementRef = new TisReferenceInfo(TIS_ID_1, PLACEMENT);
+    Action placementAction = new Action(ObjectId.get(), REVIEW_DATA, TRAINEE_ID, placementRef,
+        null, null, Instant.now());
+
+    mongoTemplate.insertAll(List.of(programmeAction, personAction, placementAction));
+
+    mockMvc.perform(get("/api/action/{traineeId}/{programmeId}", TRAINEE_ID, TIS_ID_1))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$").isArray())
+        .andExpect(jsonPath("$.length()").value(2))
+
+        // Verify programme action
+        .andExpect(jsonPath("$.[0].id").value(programmeAction.id().toString()))
+        .andExpect(jsonPath("$.[0].type").value(REVIEW_DATA.toString()))
+        .andExpect(jsonPath("$.[0].traineeId").value(TRAINEE_ID))
+        .andExpect(jsonPath("$.[0].availableFrom").value(PAST.toString()))
+        .andExpect(jsonPath("$.[0].dueBy").value(FUTURE.toString()))
+        .andExpect(jsonPath("$.[0].completed").isEmpty())
+        .andExpect(jsonPath("$.[0].tisReferenceInfo.id").value(TIS_ID_1))
+        .andExpect(jsonPath("$.[0].tisReferenceInfo.type").value(PROGRAMME_MEMBERSHIP.toString()))
+
+        // Verify person action
+        .andExpect(jsonPath("$.[1].id").value(personAction.id().toString()))
+        .andExpect(jsonPath("$.[1].type").value(REGISTER_TSS.toString()))
+        .andExpect(jsonPath("$.[1].traineeId").value(TRAINEE_ID))
+        .andExpect(jsonPath("$.[1].availableFrom").isEmpty())
+        .andExpect(jsonPath("$.[1].dueBy").isEmpty())
+        .andExpect(jsonPath("$.[1].completed").isNotEmpty())
+        .andExpect(jsonPath("$.[1].tisReferenceInfo.id").value(TRAINEE_ID))
+        .andExpect(jsonPath("$.[1].tisReferenceInfo.type").value(PERSON.toString()));
   }
 
   /**

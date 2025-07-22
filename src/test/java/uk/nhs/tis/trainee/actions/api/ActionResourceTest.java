@@ -167,4 +167,27 @@ class ActionResourceTest {
     ActionDto action = response.getBody();
     assertThat("Unexpected action.", action, sameInstance(dto));
   }
+
+  @Test
+  void shouldReturnActionsWhenGetTraineeProgrammeActions() {
+    String traineeId = "traineeId";
+    String programmeId = "programmeId";
+
+    ActionDto dto1 = new ActionDto("1", null, null, null, null, null, null);
+    ActionDto dto2 = new ActionDto("2", null, null, null, null, null, null);
+    when(service.findTraineeProgrammeMembershipActions(traineeId, programmeId))
+        .thenReturn(List.of(dto1, dto2));
+
+    ResponseEntity<List<ActionDto>> response = controller.getTraineeProgrammeActions(
+        traineeId, programmeId);
+
+    assertThat("Unexpected status code.", response.getStatusCode(), is(HttpStatus.OK));
+    assertThat("Unexpected response body presence.", response.hasBody(), is(true));
+
+    List<ActionDto> actions = response.getBody();
+    assertThat("Unexpected actions.", actions, notNullValue());
+    assertThat("Unexpected action count.", actions.size(), is(2));
+    assertThat("Unexpected action.", actions.get(0), sameInstance(dto1));
+    assertThat("Unexpected action.", actions.get(1), sameInstance(dto2));
+  }
 }

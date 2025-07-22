@@ -1001,6 +1001,65 @@ class ActionServiceTest {
     verify(repository, never()).insert(anyList());
   }
 
+  @Test
+  void shouldReturnEmptyTraineeProgrammeMembershipActionsWhenNoActionsFound() {
+    String pmId = UUID.randomUUID().toString();
+    when(repository.findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, pmId,
+        PROGRAMME_MEMBERSHIP.toString())).thenReturn(List.of());
+    when(repository.findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TRAINEE_ID,
+        PERSON.toString())).thenReturn(List.of());
+
+    List<ActionDto> actions = service.findTraineeProgrammeMembershipActions(TRAINEE_ID, pmId);
+
+    assertThat("Unexpected action count.", actions.size(), is(0));
+    verify(repository).findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, pmId,
+        PROGRAMME_MEMBERSHIP.toString());
+    verify(repository).findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TRAINEE_ID,
+        PERSON.toString());
+    verifyNoMoreInteractions(repository);
+    verifyNoInteractions(eventPublishingService);
+  }
+
+  @Test
+  void shouldReturnCombinedTraineeProgrammeMembershipActionsWhenBothTypesFound() {
+    String pmId = UUID.randomUUID().toString();
+    TisReferenceInfo pmReference = new TisReferenceInfo(pmId, PROGRAMME_MEMBERSHIP);
+    List<Action> programmeActions = List.of(
+        new Action(ObjectId.get(), REVIEW_DATA, TRAINEE_ID, pmReference, PAST, FUTURE, null)
+    );
+
+    TisReferenceInfo personReference = new TisReferenceInfo(TRAINEE_ID, PERSON);
+    List<Action> personActions = List.of(
+        new Action(ObjectId.get(), REGISTER_TSS, TRAINEE_ID, personReference, null, null,
+            Instant.now())
+    );
+
+    when(repository.findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, pmId,
+        PROGRAMME_MEMBERSHIP.toString())).thenReturn(programmeActions);
+    when(repository.findByTraineeIdAndTisReferenceInfo(TRAINEE_ID, TRAINEE_ID,
+        PERSON.toString())).thenReturn(personActions);
+
+    List<ActionDto> actions = service.findTraineeProgrammeMembershipActions(TRAINEE_ID, pmId);
+
+    assertThat("Unexpected action count.", actions.size(), is(2));
+
+    Optional<ActionDto> programmeAction = actions.stream()
+        .filter(a -> a.type().equals(REVIEW_DATA.toString()))
+        .findFirst();
+    assertThat("Missing programme action.", programmeAction.isPresent(), is(true));
+    TisReferenceInfo pmRefInfo = programmeAction.get().tisReferenceInfo();
+    assertThat("Unexpected TIS id.", pmRefInfo.id(), is(pmId));
+    assertThat("Unexpected TIS type.", pmRefInfo.type(), is(PROGRAMME_MEMBERSHIP));
+
+    Optional<ActionDto> personAction = actions.stream()
+        .filter(a -> a.type().equals(REGISTER_TSS.toString()))
+        .findFirst();
+    assertThat("Missing person action.", personAction.isPresent(), is(true));
+    TisReferenceInfo personRefInfo = personAction.get().tisReferenceInfo();
+    assertThat("Unexpected TIS id.", personRefInfo.id(), is(TRAINEE_ID));
+    assertThat("Unexpected TIS type.", personRefInfo.type(), is(PERSON));
+  }
+
   static Stream<String> listPlacementTypes() {
     return PLACEMENT_TYPES_TO_ACT_ON.stream();
   }

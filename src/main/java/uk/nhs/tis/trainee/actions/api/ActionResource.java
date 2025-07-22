@@ -52,10 +52,10 @@ public class ActionResource {
   }
 
   /**
-   * Get actions associated with the authenticated trainee.
+   * Get incomplete actions associated with the authenticated trainee.
    *
    * @param token The authentication token containing the trainee ID.
-   * @return A list of actions associated with the trainee, may be empty.
+   * @return A list of incomplete actions associated with the trainee, may be empty.
    */
   @GetMapping
   public ResponseEntity<List<ActionDto>> getTraineeActions(
@@ -76,7 +76,7 @@ public class ActionResource {
     }
 
     List<ActionDto> actions = service.findIncompleteTraineeActions(traineeId);
-    log.info("{} actions found for trainee {}.", actions.size(), traineeId);
+    log.info("{} incomplete actions found for trainee {}.", actions.size(), traineeId);
 
     return ResponseEntity.ok(actions);
   }
@@ -108,5 +108,29 @@ public class ActionResource {
 
     Optional<ActionDto> action = service.completeAsUser(traineeId, actionId);
     return ResponseEntity.of(action);
+  }
+
+  /**
+   * Get complete and incomplete actions associated with a trainee and programme membership. This is
+   * an internal API without an authorization token.
+   *
+   * @param traineeId   The trainee TIS ID.
+   * @param programmeId The programme membership ID.
+   * @return A list of all actions associated with the trainee and programme membership, which may
+   *         be empty if the programme membership or trainee were not found, but otherwise should
+   *         contain an ActionDto for each programmeActionTypes and personActionTypes ActionType.
+   */
+  @GetMapping("/{traineeId}/{programmeId}")
+  public ResponseEntity<List<ActionDto>> getTraineeProgrammeActions(
+      @PathVariable String traineeId,
+      @PathVariable String programmeId) {
+    log.info("Received request to get actions for trainee {} programme membership {}.",
+        traineeId, programmeId);
+
+    List<ActionDto> actions = service.findTraineeProgrammeMembershipActions(traineeId, programmeId);
+    log.info("{} actions found for trainee {} programme membership {}.", actions.size(),
+        traineeId, programmeId);
+
+    return ResponseEntity.ok(actions);
   }
 }
