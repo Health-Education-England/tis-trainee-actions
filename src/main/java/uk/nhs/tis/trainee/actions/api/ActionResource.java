@@ -52,10 +52,10 @@ public class ActionResource {
   }
 
   /**
-   * Get incomplete actions associated with the authenticated trainee.
+   * Get available incomplete actions associated with the authenticated trainee.
    *
    * @param token The authentication token containing the trainee ID.
-   * @return A list of incomplete actions associated with the trainee, may be empty.
+   * @return A list of available incomplete actions associated with the trainee, may be empty.
    */
   @GetMapping
   public ResponseEntity<List<ActionDto>> getTraineeActions(

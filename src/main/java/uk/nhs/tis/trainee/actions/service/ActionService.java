@@ -354,14 +354,16 @@ public class ActionService {
   }
 
   /**
-   * Find all incomplete actions associated with a given trainee ID.
+   * Find all available incomplete actions associated with a given trainee ID.
    *
    * @param traineeId The ID of the trainee to get actions for.
    * @return The found actions, empty if no actions found.
    */
   public List<ActionDto> findIncompleteTraineeActions(String traineeId) {
     List<Action> actions = repository.findAllByTraineeIdAndCompletedIsNullOrderByDueByAsc(
-        traineeId);
+        traineeId).stream()
+        .filter(a -> a.availableFrom() == null || !a.availableFrom().isAfter(LocalDate.now()))
+        .toList();
     return mapper.toDtos(actions);
   }
 
