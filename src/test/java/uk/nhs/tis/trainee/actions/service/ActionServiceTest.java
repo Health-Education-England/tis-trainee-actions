@@ -589,6 +589,51 @@ class ActionServiceTest {
     });
   }
 
+  @ParameterizedTest
+  @EnumSource(TisReferenceType.class)
+  void shouldExcludeNotAvailableActionsWhenTraineeActionsFound(TisReferenceType tisType) {
+    TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, tisType);
+    ObjectId objectId1 = ObjectId.get();
+    Action action1 = new Action(objectId1, REVIEW_DATA, TRAINEE_ID, tisReference, FUTURE,
+        FUTURE, null);
+    List<Action> actions = List.of(action1);
+
+    when(repository.findAllByTraineeIdAndCompletedIsNullOrderByDueByAsc(TRAINEE_ID)).thenReturn(
+        actions);
+
+    List<ActionDto> dtos = service.findIncompleteTraineeActions(TRAINEE_ID);
+
+    assertThat("Unexpected action count.", dtos.size(), is(0));
+  }
+
+  @ParameterizedTest
+  @EnumSource(TisReferenceType.class)
+  void shouldIncludeUnknownAvailableActionsWhenTraineeActionsFound(TisReferenceType tisType) {
+    TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, tisType);
+    ObjectId objectId1 = ObjectId.get();
+    Action action1 = new Action(objectId1, REVIEW_DATA, TRAINEE_ID, tisReference, null,
+        FUTURE, null);
+    List<Action> actions = List.of(action1);
+
+    when(repository.findAllByTraineeIdAndCompletedIsNullOrderByDueByAsc(TRAINEE_ID)).thenReturn(
+        actions);
+
+    List<ActionDto> dtos = service.findIncompleteTraineeActions(TRAINEE_ID);
+
+    assertThat("Unexpected action count.", dtos.size(), is(1));
+    ActionDto dto = dtos.get(0);
+    assertThat("Unexpected action ID.", dto.id(), is(objectId1.toString()));
+    assertThat("Unexpected action type.", dto.type(), is(REVIEW_DATA.toString()));
+    assertThat("Unexpected trainee id.", dto.traineeId(), is(TRAINEE_ID));
+    assertThat("Unexpected available from date.", dto.availableFrom(), nullValue());
+    assertThat("Unexpected due by date.", dto.dueBy(), is(FUTURE));
+    assertThat("Unexpected completed date.", dto.completed(), nullValue());
+
+    TisReferenceInfo refInfo = dto.tisReferenceInfo();
+    assertThat("Unexpected TIS id.", refInfo.id(), is(TIS_ID));
+    assertThat("Unexpected TIS type.", refInfo.type(), is(tisType));
+  }
+
   @Test
   void shouldNotCompleteActionWhenActionIdInvalid() {
     Optional<ActionDto> optionalAction = service.completeAsUser(TRAINEE_ID, "40");
