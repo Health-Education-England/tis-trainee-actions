@@ -118,7 +118,8 @@ public class ActionService {
     List<Action> actions = new ArrayList<>();
 
     if (Objects.equals(operation, Operation.LOAD)) {
-      if (PLACEMENT_TYPES_TO_ACT_ON.stream().anyMatch(dto.placementType()::equalsIgnoreCase)) {
+      if (dto.placementType() != null
+          && PLACEMENT_TYPES_TO_ACT_ON.stream().anyMatch(dto.placementType()::equalsIgnoreCase)) {
 
         addOrUpdatePlacementAction(dto, actions);
 

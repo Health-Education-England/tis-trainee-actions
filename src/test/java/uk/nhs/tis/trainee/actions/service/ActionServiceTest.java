@@ -764,9 +764,12 @@ class ActionServiceTest {
     verify(repository, never()).insert(anyList());
   }
 
-  @Test
-  void shouldNotInsertActionAndDeleteAnyExistingNotCompleteActionsWhenPlacementTypeIgnored() {
-    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, POST_EPOCH, "ignored placement type");
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(strings = "ignored placement type")
+  void shouldNotInsertActionAndDeleteAnyExistingNotCompleteActionsWhenPlacementTypeIgnored(
+      String placementType) {
+    PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, POST_EPOCH, placementType);
 
     when(repository.deleteByTraineeIdAndTisReferenceInfoAndActionType(eq(TRAINEE_ID),
         eq(TIS_ID), eq(String.valueOf(PLACEMENT)), any())).thenReturn(Collections.emptyList());
