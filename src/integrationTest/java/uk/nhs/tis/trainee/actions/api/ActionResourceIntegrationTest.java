@@ -24,6 +24,9 @@ package uk.nhs.tis.trainee.actions.api;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -48,6 +51,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
@@ -60,6 +64,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.tis.trainee.actions.DockerImageNames;
 import uk.nhs.tis.trainee.actions.model.Action;
 import uk.nhs.tis.trainee.actions.model.Action.TisReferenceInfo;
+import uk.nhs.tis.trainee.actions.service.EventPublishingService;
 
 @SpringBootTest
 @Testcontainers
@@ -84,6 +89,9 @@ class ActionResourceIntegrationTest {
 
   @Autowired
   private MongoTemplate mongoTemplate;
+
+  @MockBean
+  private EventPublishingService eventPublishingService;
 
   @AfterEach
   void cleanUp() {
@@ -286,11 +294,17 @@ class ActionResourceIntegrationTest {
     assertThat("Unexpected action trainee ID.", movedAction1.traineeId(), is(toTraineeId));
     assertThat("Unexpected changes to moved action.", movedAction1.withTraineeId(fromTraineeId),
         is(action1));
+
+    verify(eventPublishingService).publishActionUpdateEvent(movedAction1);
+
     Action movedAction2 = mongoTemplate.findById(id2, Action.class);
     assertThat("Unexpected missing action.", movedAction2, notNullValue());
     assertThat("Unexpected action trainee ID.", movedAction2.traineeId(), is(toTraineeId));
     assertThat("Unexpected changes to moved action.", movedAction2.withTraineeId(fromTraineeId),
         is(action2));
+
+    verify(eventPublishingService).publishActionUpdateEvent(movedAction2);
+    verifyNoMoreInteractions(eventPublishingService);
   }
 
   @Test
@@ -303,6 +317,8 @@ class ActionResourceIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$").value(true));
+
+    verifyNoInteractions(eventPublishingService);
   }
 
   /**
