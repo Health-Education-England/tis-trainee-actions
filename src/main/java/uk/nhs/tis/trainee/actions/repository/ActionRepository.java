@@ -37,6 +37,14 @@ import uk.nhs.tis.trainee.actions.model.Action;
 public interface ActionRepository extends MongoRepository<Action, ObjectId> {
 
   /**
+   * Get all actions associated with a given trainee ID.
+   *
+   * @param traineeId The ID of the trainee to get actions for.
+   * @return A list of actions for the trainee.
+   */
+  List<Action> findAllByTraineeId(String traineeId);
+
+  /**
    * Get all incomplete actions associated with a given trainee ID.
    *
    * @param traineeId The ID of the trainee to get actions for.

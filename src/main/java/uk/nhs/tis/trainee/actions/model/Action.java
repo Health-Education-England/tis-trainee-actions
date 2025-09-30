@@ -23,6 +23,7 @@ package uk.nhs.tis.trainee.actions.model;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import lombok.With;
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -44,6 +45,7 @@ public record Action(
     @Id
     ObjectId id,
     ActionType type,
+    @With
     String traineeId,
     TisReferenceInfo tisReferenceInfo,
     LocalDate availableFrom,
