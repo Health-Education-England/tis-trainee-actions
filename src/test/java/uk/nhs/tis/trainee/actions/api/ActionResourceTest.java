@@ -26,6 +26,7 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -189,5 +190,27 @@ class ActionResourceTest {
     assertThat("Unexpected action count.", actions.size(), is(2));
     assertThat("Unexpected action.", actions.get(0), sameInstance(dto1));
     assertThat("Unexpected action.", actions.get(1), sameInstance(dto2));
+  }
+
+  @Test
+  void shouldReturnOkWhenMovingActions() {
+    String fromTraineeId = "fromTraineeId";
+    String toTraineeId = "toTraineeId";
+
+    ResponseEntity<Boolean> response = controller.moveNotifications(fromTraineeId, toTraineeId);
+
+    assertThat("Unexpected status code.", response.getStatusCode(), is(HttpStatus.OK));
+    assertThat("Unexpected response body presence.", response.hasBody(), is(true));
+    assertThat("Unexpected response value.", response.getBody(), is(true));
+  }
+
+  @Test
+  void shouldDelegateToServiceWhenMovingActions() {
+    String fromTraineeId = "fromTraineeId";
+    String toTraineeId = "toTraineeId";
+
+    controller.moveNotifications(fromTraineeId, toTraineeId);
+
+    verify(service).moveActions(fromTraineeId, toTraineeId);
   }
 }

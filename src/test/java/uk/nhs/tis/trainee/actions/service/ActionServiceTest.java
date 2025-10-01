@@ -26,6 +26,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.in;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyIterable;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -1106,6 +1107,47 @@ class ActionServiceTest {
     TisReferenceInfo personRefInfo = personAction.get().tisReferenceInfo();
     assertThat("Unexpected TIS id.", personRefInfo.id(), is(TRAINEE_ID));
     assertThat("Unexpected TIS type.", personRefInfo.type(), is(PERSON));
+  }
+
+  @Test
+  void shouldMoveTraineeActionsWhenActionsExist() {
+    String fromTraineeId = "fromTraineeId";
+    String toTraineeId = "toTraineeId";
+    TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
+    Action action1 = new Action(ObjectId.get(), REVIEW_DATA, fromTraineeId, tisReference, PAST,
+        FUTURE, null);
+    Action action2 = new Action(ObjectId.get(), REGISTER_TSS, fromTraineeId, tisReference, PAST,
+        FUTURE, Instant.now());
+    List<Action> actionstoMove = List.of(action1, action2);
+
+    when(repository.findAllByTraineeId(fromTraineeId)).thenReturn(actionstoMove);
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    service.moveActions(fromTraineeId, toTraineeId);
+
+    ArgumentCaptor<Action> actionCaptor = ArgumentCaptor.forClass(Action.class);
+    verify(repository, times(2)).save(actionCaptor.capture());
+    verify(eventPublishingService, times(2)).publishActionUpdateEvent(actionCaptor.capture());
+
+    List<Action> savedActions = actionCaptor.getAllValues();
+    savedActions.forEach(action -> {
+      assertThat("Unexpected trainee id.", action.traineeId(), is(toTraineeId));
+      assertThat("Unexpected saved action.", action.withTraineeId(fromTraineeId),
+          is(in(actionstoMove)));
+    });
+  }
+
+  @Test
+  void shouldNotMoveTraineeActionsWhenNoActionsExist() {
+    String fromTraineeId = "fromTraineeId";
+    String toTraineeId = "toTraineeId";
+
+    when(repository.findAllByTraineeId(fromTraineeId)).thenReturn(Collections.emptyList());
+
+    service.moveActions(fromTraineeId, toTraineeId);
+
+    verify(repository, never()).save(any());
+    verifyNoInteractions(eventPublishingService);
   }
 
   static Stream<String> listPlacementTypes() {

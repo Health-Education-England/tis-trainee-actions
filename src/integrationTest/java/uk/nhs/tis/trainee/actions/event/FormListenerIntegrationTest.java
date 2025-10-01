@@ -24,7 +24,6 @@ package uk.nhs.tis.trainee.actions.event;
 
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.testcontainers.containers.localstack.LocalStackContainer.Service.SQS;

@@ -502,4 +502,25 @@ public class ActionService {
     }
     return false;
   }
+
+  /**
+   * Move all actions from one trainee to another. Assumes that fromTraineeId and toTraineeId
+   * are valid. The updated actions are broadcast as events.
+   *
+   * @param fromTraineeId The trainee ID to move actions from.
+   * @param toTraineeId   The trainee ID to move actions to.
+   */
+  public void moveActions(String fromTraineeId, String toTraineeId) {
+    List<Action> actions = repository.findAllByTraineeId(fromTraineeId);
+
+    actions.forEach(action -> {
+      log.info("Moving action [{}] from trainee [{}] to trainee [{}]",
+          action.id(), fromTraineeId, toTraineeId);
+      // note tisReferenceInfo is not changed
+      Action updatedAction = repository.save(action.withTraineeId(toTraineeId));
+      eventPublishingService.publishActionUpdateEvent(updatedAction);
+    });
+    log.info("Moved {} actions from trainee [{}] to trainee [{}]",
+        actions.size(), fromTraineeId, toTraineeId);
+  }
 }
