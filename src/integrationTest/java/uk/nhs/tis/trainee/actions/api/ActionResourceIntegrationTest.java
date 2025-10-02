@@ -269,7 +269,7 @@ class ActionResourceIntegrationTest {
   }
 
   @Test
-  void shouldReturnOkAndMoveActionsWhenActionsExist() throws Exception {
+  void shouldReturnMapAndMoveActionsWhenActionsExist() throws Exception {
     String fromTraineeId = "fromTraineeId";
     String toTraineeId = "toTraineeId";
     TisReferenceInfo programmeRef = new TisReferenceInfo(TIS_ID_1, PROGRAMME_MEMBERSHIP);
@@ -286,7 +286,7 @@ class ActionResourceIntegrationTest {
             fromTraineeId, toTraineeId))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-        .andExpect(jsonPath("$").value(true));
+        .andExpect(jsonPath("$.action").value(2));
 
     // Verify actions were moved
     Action movedAction1 = mongoTemplate.findById(id1, Action.class);
@@ -308,7 +308,7 @@ class ActionResourceIntegrationTest {
   }
 
   @Test
-  void shouldReturnOkWhenNoActionsExist() throws Exception {
+  void shouldReturnMapWhenMoveButNoActionsExist() throws Exception {
     String fromTraineeId = "fromTraineeId";
     String toTraineeId = "toTraineeId";
 
@@ -316,7 +316,7 @@ class ActionResourceIntegrationTest {
             fromTraineeId, toTraineeId))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-        .andExpect(jsonPath("$").value(true));
+        .andExpect(jsonPath("$.action").value(0));
 
     verifyNoInteractions(eventPublishingService);
   }
