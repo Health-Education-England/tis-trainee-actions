@@ -33,8 +33,10 @@ import static org.mockito.Mockito.when;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -193,15 +195,20 @@ class ActionResourceTest {
   }
 
   @Test
-  void shouldReturnOkWhenMovingActions() {
+  void shouldReturnMovedStatsMapWhenMovingActions() {
     String fromTraineeId = "fromTraineeId";
     String toTraineeId = "toTraineeId";
 
-    ResponseEntity<Boolean> response = controller.moveNotifications(fromTraineeId, toTraineeId);
+    Map<String, Integer> serviceResponse = Map.of("dummy", 1);
+    when(service.moveActions(fromTraineeId, toTraineeId)).thenReturn(serviceResponse);
+
+    ResponseEntity<Map<String, Integer>> response
+        = controller.moveNotifications(fromTraineeId, toTraineeId);
 
     assertThat("Unexpected status code.", response.getStatusCode(), is(HttpStatus.OK));
     assertThat("Unexpected response body presence.", response.hasBody(), is(true));
-    assertThat("Unexpected response value.", response.getBody(), is(true));
+    Assertions.assertNotNull(response.getBody());
+    assertThat("Unexpected response value.", response.getBody().get("dummy"), is(1));
   }
 
   @Test

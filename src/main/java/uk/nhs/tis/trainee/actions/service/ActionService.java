@@ -32,8 +32,10 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
@@ -509,18 +511,22 @@ public class ActionService {
    *
    * @param fromTraineeId The trainee ID to move actions from.
    * @param toTraineeId   The trainee ID to move actions to.
+   * @return A map with the count of moved actions by action type.
    */
-  public void moveActions(String fromTraineeId, String toTraineeId) {
+  public Map<String, Integer> moveActions(String fromTraineeId, String toTraineeId) {
+    AtomicReference<Integer> movedCount = new AtomicReference<>(0);
     List<Action> actions = repository.findAllByTraineeId(fromTraineeId);
 
     actions.forEach(action -> {
-      log.info("Moving action [{}] from trainee [{}] to trainee [{}]",
+      log.debug("Moving action [{}] from trainee [{}] to trainee [{}]",
           action.id(), fromTraineeId, toTraineeId);
       // note tisReferenceInfo is not changed
       Action updatedAction = repository.save(action.withTraineeId(toTraineeId));
       eventPublishingService.publishActionUpdateEvent(updatedAction);
+      movedCount.getAndSet(movedCount.get() + 1);
     });
     log.info("Moved {} actions from trainee [{}] to trainee [{}]",
-        actions.size(), fromTraineeId, toTraineeId);
+        movedCount.get(), fromTraineeId, toTraineeId);
+    return Map.of("action", movedCount.get());
   }
 }
