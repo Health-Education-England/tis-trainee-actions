@@ -23,6 +23,7 @@ package uk.nhs.tis.trainee.actions.api;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -140,15 +141,15 @@ public class ActionResource {
    *
    * @param fromTraineeId The TIS ID of the trainee to move actions from.
    * @param toTraineeId   The TIS ID of the trainee to move actions to.
-   * @return True if the actions were moved.
+   * @return Map of how many actions were moved.
    */
   @PatchMapping("/move/{fromTraineeId}/to/{toTraineeId}")
-  public ResponseEntity<Boolean> moveNotifications(@PathVariable String fromTraineeId,
+  public ResponseEntity<Map<String, Integer>> moveNotifications(@PathVariable String fromTraineeId,
       @PathVariable String toTraineeId) {
     log.info("Request to move actions from trainee {} to trainee {}",
         fromTraineeId, toTraineeId);
 
-    service.moveActions(fromTraineeId, toTraineeId);
-    return ResponseEntity.ok(true);
+    Map<String, Integer> movedStats = service.moveActions(fromTraineeId, toTraineeId);
+    return ResponseEntity.ok(movedStats);
   }
 }
