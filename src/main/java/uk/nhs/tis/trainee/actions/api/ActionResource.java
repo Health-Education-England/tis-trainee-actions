@@ -23,13 +23,11 @@ package uk.nhs.tis.trainee.actions.api;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -134,22 +132,5 @@ public class ActionResource {
         traineeId, programmeId);
 
     return ResponseEntity.ok(actions);
-  }
-
-  /**
-   * Move all actions from one trainee to another.
-   *
-   * @param fromTraineeId The TIS ID of the trainee to move actions from.
-   * @param toTraineeId   The TIS ID of the trainee to move actions to.
-   * @return Map of how many actions were moved.
-   */
-  @PatchMapping("/move/{fromTraineeId}/to/{toTraineeId}")
-  public ResponseEntity<Map<String, Integer>> moveNotifications(@PathVariable String fromTraineeId,
-      @PathVariable String toTraineeId) {
-    log.info("Request to move actions from trainee {} to trainee {}",
-        fromTraineeId, toTraineeId);
-
-    Map<String, Integer> movedStats = service.moveActions(fromTraineeId, toTraineeId);
-    return ResponseEntity.ok(movedStats);
   }
 }

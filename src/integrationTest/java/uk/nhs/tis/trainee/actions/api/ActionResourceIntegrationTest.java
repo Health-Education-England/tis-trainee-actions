@@ -268,59 +268,6 @@ class ActionResourceIntegrationTest {
         .andExpect(jsonPath("$.[1].tisReferenceInfo.type").value(PERSON.toString()));
   }
 
-  @Test
-  void shouldReturnMapAndMoveActionsWhenActionsExist() throws Exception {
-    String fromTraineeId = "fromTraineeId";
-    String toTraineeId = "toTraineeId";
-    TisReferenceInfo programmeRef = new TisReferenceInfo(TIS_ID_1, PROGRAMME_MEMBERSHIP);
-    ObjectId id1 = ObjectId.get();
-    Action action1 = new Action(id1, REVIEW_DATA, fromTraineeId, programmeRef, PAST,
-        FUTURE, null);
-    ObjectId id2 = ObjectId.get();
-    Action action2 = new Action(id2, REGISTER_TSS, fromTraineeId, programmeRef, PAST,
-        FUTURE, null);
-
-    mongoTemplate.insertAll(List.of(action1, action2));
-
-    mockMvc.perform(patch("/api/action/move/{fromTraineeId}/to/{toTraineeId}",
-            fromTraineeId, toTraineeId))
-        .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-        .andExpect(jsonPath("$.action").value(2));
-
-    // Verify actions were moved
-    Action movedAction1 = mongoTemplate.findById(id1, Action.class);
-    assertThat("Unexpected missing action.", movedAction1, notNullValue());
-    assertThat("Unexpected action trainee ID.", movedAction1.traineeId(), is(toTraineeId));
-    assertThat("Unexpected changes to moved action.", movedAction1.withTraineeId(fromTraineeId),
-        is(action1));
-
-    verify(eventPublishingService).publishActionUpdateEvent(movedAction1);
-
-    Action movedAction2 = mongoTemplate.findById(id2, Action.class);
-    assertThat("Unexpected missing action.", movedAction2, notNullValue());
-    assertThat("Unexpected action trainee ID.", movedAction2.traineeId(), is(toTraineeId));
-    assertThat("Unexpected changes to moved action.", movedAction2.withTraineeId(fromTraineeId),
-        is(action2));
-
-    verify(eventPublishingService).publishActionUpdateEvent(movedAction2);
-    verifyNoMoreInteractions(eventPublishingService);
-  }
-
-  @Test
-  void shouldReturnMapWhenMoveButNoActionsExist() throws Exception {
-    String fromTraineeId = "fromTraineeId";
-    String toTraineeId = "toTraineeId";
-
-    mockMvc.perform(patch("/api/action/move/{fromTraineeId}/to/{toTraineeId}",
-            fromTraineeId, toTraineeId))
-        .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-        .andExpect(jsonPath("$.action").value(0));
-
-    verifyNoInteractions(eventPublishingService);
-  }
-
   /**
    * Generate a valid authentication token.
    *

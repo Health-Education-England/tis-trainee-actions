@@ -1123,10 +1123,7 @@ class ActionServiceTest {
     when(repository.findAllByTraineeId(fromTraineeId)).thenReturn(actionstoMove);
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-    Map<String, Integer> movedStats = service.moveActions(fromTraineeId, toTraineeId);
-
-    Map<String, Integer> expectedMap = Map.of("action", 2);
-    assertThat("Unexpected moved action count.", movedStats, is(expectedMap));
+    service.moveActions(fromTraineeId, toTraineeId);
 
     ArgumentCaptor<Action> actionCaptor = ArgumentCaptor.forClass(Action.class);
     verify(repository, times(2)).save(actionCaptor.capture());
@@ -1147,10 +1144,7 @@ class ActionServiceTest {
 
     when(repository.findAllByTraineeId(fromTraineeId)).thenReturn(Collections.emptyList());
 
-    Map<String, Integer> movedStats = service.moveActions(fromTraineeId, toTraineeId);
-
-    Map<String, Integer> expectedMap = Map.of("action", 0);
-    assertThat("Unexpected moved action count.", movedStats, is(expectedMap));
+    service.moveActions(fromTraineeId, toTraineeId);
 
     verify(repository, never()).save(any());
     verifyNoInteractions(eventPublishingService);

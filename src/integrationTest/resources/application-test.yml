@@ -5,6 +5,7 @@ application:
     form-updated: dummy
     placement-synced: dummy
     programme-membership-synced: dummy
+    profile-move: dummy
   sns:
     arn: dummy
 
