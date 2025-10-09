@@ -22,4 +22,10 @@
 
 package uk.nhs.tis.trainee.actions.event;
 
+/**
+ * A profile move event.
+ *
+ * @param fromTraineeId The ID of the trainee the profile actions are being moved from.
+ * @param toTraineeId   The ID of the trainee the profile actions are being moved to.
+ */
 public record ProfileMoveEvent(String fromTraineeId, String toTraineeId) {}

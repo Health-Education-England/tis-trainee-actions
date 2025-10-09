@@ -6,6 +6,7 @@ application:
     form-updated: ${local.sqs-path}/tis-trainee-actions-local-form-updated
     placement-synced: ${local.sqs-path}/tis-trainee-actions-local-placement-synced
     programme-membership-synced: ${local.sqs-path}/tis-trainee-actions-local-programme-membership-synced
+    profile-move: ${local.sqs-path}/tis-trainee-actions-local-profile-move
   sns:
     arn: arn:aws:sns:eu-west-2:${local.account-id}:tis-trainee-actions-event
 

@@ -24,6 +24,7 @@ package uk.nhs.tis.trainee.actions.event;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
@@ -35,7 +36,7 @@ import uk.nhs.tis.trainee.actions.service.ActionService;
 /**
  * Test for {@link ProfileMoveListener}.
  */
-public class ProfileMoveListenerTest {
+class ProfileMoveListenerTest {
   private static final String FROM_TRAINEE_ID = UUID.randomUUID().toString();
   private static final String TO_TRAINEE_ID = UUID.randomUUID().toString();
 
@@ -64,6 +65,6 @@ public class ProfileMoveListenerTest {
 
     listener.handleProfileMove(event);
 
-    verify(service).moveActions(FROM_TRAINEE_ID,TO_TRAINEE_ID);
+    verify(service).moveActions(FROM_TRAINEE_ID, TO_TRAINEE_ID);
   }
 }
