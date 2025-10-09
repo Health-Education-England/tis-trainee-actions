@@ -32,7 +32,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
@@ -511,9 +510,8 @@ public class ActionService {
    *
    * @param fromTraineeId The trainee ID to move actions from.
    * @param toTraineeId   The trainee ID to move actions to.
-   * @return A map with the count of moved actions by action type.
    */
-  public Map<String, Integer> moveActions(String fromTraineeId, String toTraineeId) {
+  public void moveActions(String fromTraineeId, String toTraineeId) {
     AtomicReference<Integer> movedCount = new AtomicReference<>(0);
     List<Action> actions = repository.findAllByTraineeId(fromTraineeId);
 
@@ -527,6 +525,5 @@ public class ActionService {
     });
     log.info("Moved {} actions from trainee [{}] to trainee [{}]",
         movedCount.get(), fromTraineeId, toTraineeId);
-    return Map.of("action", movedCount.get());
   }
 }

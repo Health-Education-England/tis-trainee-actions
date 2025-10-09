@@ -26,17 +26,14 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -192,32 +189,5 @@ class ActionResourceTest {
     assertThat("Unexpected action count.", actions.size(), is(2));
     assertThat("Unexpected action.", actions.get(0), sameInstance(dto1));
     assertThat("Unexpected action.", actions.get(1), sameInstance(dto2));
-  }
-
-  @Test
-  void shouldReturnMovedStatsMapWhenMovingActions() {
-    String fromTraineeId = "fromTraineeId";
-    String toTraineeId = "toTraineeId";
-
-    Map<String, Integer> serviceResponse = Map.of("dummy", 1);
-    when(service.moveActions(fromTraineeId, toTraineeId)).thenReturn(serviceResponse);
-
-    ResponseEntity<Map<String, Integer>> response
-        = controller.moveNotifications(fromTraineeId, toTraineeId);
-
-    assertThat("Unexpected status code.", response.getStatusCode(), is(HttpStatus.OK));
-    assertThat("Unexpected response body presence.", response.hasBody(), is(true));
-    Assertions.assertNotNull(response.getBody());
-    assertThat("Unexpected response value.", response.getBody().get("dummy"), is(1));
-  }
-
-  @Test
-  void shouldDelegateToServiceWhenMovingActions() {
-    String fromTraineeId = "fromTraineeId";
-    String toTraineeId = "toTraineeId";
-
-    controller.moveNotifications(fromTraineeId, toTraineeId);
-
-    verify(service).moveActions(fromTraineeId, toTraineeId);
   }
 }

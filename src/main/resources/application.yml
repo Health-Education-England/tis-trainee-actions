@@ -6,6 +6,7 @@ application:
     form-updated: ${FORM_UPDATED_QUEUE}
     placement-synced: ${PLACEMENT_SYNCED_QUEUE}
     programme-membership-synced: ${PROGRAMME_MEMBERSHIP_SYNCED_QUEUE}
+    profile-move: ${PROFILE_MOVE_QUEUE}
   sns:
     arn: ${ACTION_EVENT_TOPIC}
 
