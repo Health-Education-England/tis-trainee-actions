@@ -61,7 +61,7 @@ public class ActionService {
 
   public static final LocalDate ACTIONS_EPOCH = LocalDate.of(2024, 8, 1);
   public static final List<String> PLACEMENT_TYPES_TO_ACT_ON
-      = List.of("In post", "In post - Acting up", "In Post - Extension");
+      = List.of("In post"); // Only placement types starting with 'In post' generate actions
   public static final String FORM_PROGRAMME_MEMBERSHIP_ID_FIELD = "programmeMembershipId";
 
   private final ActionRepository repository;
@@ -120,7 +120,8 @@ public class ActionService {
 
     if (Objects.equals(operation, Operation.LOAD)) {
       if (dto.placementType() != null
-          && PLACEMENT_TYPES_TO_ACT_ON.stream().anyMatch(dto.placementType()::equalsIgnoreCase)) {
+          && PLACEMENT_TYPES_TO_ACT_ON.stream().anyMatch(type ->
+          dto.placementType().toLowerCase().startsWith(type.toLowerCase()))) {
 
         addOrUpdatePlacementAction(dto, actions);
 
