@@ -46,7 +46,6 @@ import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PERSON;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 import static uk.nhs.tis.trainee.actions.service.ActionService.ACTIONS_EPOCH;
-import static uk.nhs.tis.trainee.actions.service.ActionService.PLACEMENT_TYPES_TO_ACT_ON;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -96,6 +95,11 @@ class ActionServiceTest {
   private static final LocalDate PAST = NOW.minusDays(1);
   private static final LocalDate FUTURE = NOW.plusDays(1);
   private static final String PLACEMENT_TYPE = "In Post";
+
+  private static final String IN_POST = "In Post";
+  private static final String IN_POST_ACTING_UP = "In Post - Acting up";
+  private static final String IN_POST_EXTENSION = "In Post - Extension";
+  private static final String IN_POST_POG = "In Post - POG";
 
   private ActionService service;
   private ActionRepository repository;
@@ -906,7 +910,7 @@ class ActionServiceTest {
   }
 
   @ParameterizedTest
-  @MethodSource("listPlacementTypes")
+  @ValueSource(strings = {IN_POST, IN_POST_ACTING_UP, IN_POST_EXTENSION, IN_POST_POG})
   void shouldInsertActionsOnPlacementCreate(String placementType) {
     PlacementDto dto = new PlacementDto(TIS_ID, TRAINEE_ID, POST_EPOCH, placementType);
 
@@ -1148,10 +1152,6 @@ class ActionServiceTest {
 
     verify(repository, never()).save(any());
     verifyNoInteractions(eventPublishingService);
-  }
-
-  static Stream<String> listPlacementTypes() {
-    return PLACEMENT_TYPES_TO_ACT_ON.stream();
   }
 
   static Stream<ActionType> listNonUserCompletableActionTypes() {
