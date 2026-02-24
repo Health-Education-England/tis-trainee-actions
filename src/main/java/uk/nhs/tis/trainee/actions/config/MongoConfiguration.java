@@ -47,11 +47,11 @@ public class MongoConfiguration {
   @PostConstruct
   public void initIndexes() {
     IndexOperations indexOps = template.indexOps(Action.class);
-    indexOps.ensureIndex(new Index()
+    indexOps.createIndex(new Index()
         .named("traineeIndex")
         .on("traineeId", Direction.ASC)
     );
-    indexOps.ensureIndex(new Index()
+    indexOps.createIndex(new Index()
         .named("uniqueActionPerReference")
         .on("type", Direction.ASC)
         .on("tisReferenceInfo", Direction.ASC)
