@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -68,6 +69,11 @@ public class ProfileMoveListenerIntegrationTest {
   private static final String TO_TRAINEE_ID = UUID.randomUUID().toString();
 
   private static final String PROFILE_MOVE_QUEUE = UUID.randomUUID().toString();
+
+  private static final LocalDate PAST_DATE = LocalDate.now().minusMonths(12);
+  private static final LocalDate FUTURE_DATE = LocalDate.now().plusMonths(12);
+  private static final Instant PAST_INSTANT = Instant.now().minus(Duration.ofDays(300))
+      .truncatedTo(ChronoUnit.MILLIS);
 
   @Container
   @ServiceConnection
@@ -112,7 +118,7 @@ public class ProfileMoveListenerIntegrationTest {
   void shouldMoveAllActionsWhenProfileMove() throws JsonProcessingException {
     ObjectId id1 = ObjectId.get();
     Action actionToMove1 = new Action(id1, ActionType.SIGN_COJ, FROM_TRAINEE_ID, null,
-        LocalDate.MIN, LocalDate.MAX, Instant.MIN);
+        PAST_DATE, FUTURE_DATE, PAST_INSTANT);
     mongoTemplate.insert(actionToMove1);
 
     ObjectId id2 = ObjectId.get();
@@ -170,7 +176,7 @@ public class ProfileMoveListenerIntegrationTest {
   void shouldNotMoveUnexpectedActionsWhenProfileMove() throws JsonProcessingException {
     ObjectId id1 = ObjectId.get();
     Action actionToMove1 = new Action(id1, ActionType.SIGN_COJ, TO_TRAINEE_ID, null,
-        LocalDate.MIN, LocalDate.MAX, Instant.MIN);
+        PAST_DATE, FUTURE_DATE, PAST_INSTANT);
     mongoTemplate.insert(actionToMove1);
 
     ObjectId id2 = ObjectId.get();

@@ -36,6 +36,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -148,7 +149,9 @@ public class FormListenerIntegrationTest {
           assertThat("Unexpected action count.", found.size(), is(1));
 
           Action action = found.get(0);
-          assertThat("Unexpected completed date.", action.completed(), is(FORM_UPDATED_TIME));
+          assertThat("Unexpected completed date.",
+              action.completed().truncatedTo(ChronoUnit.MILLIS),
+              is(FORM_UPDATED_TIME.truncatedTo(ChronoUnit.MILLIS)));
         });
   }
 
