@@ -176,6 +176,68 @@ class ProgrammeMembershipListenerIntegrationTest {
   }
 
   @Test
+  void shouldInsertAllFoundationActionsWhenFoundationProgrammeMembershipCreated()
+      throws JsonProcessingException {
+    String traineeId = UUID.randomUUID().toString();
+    String eventString = """
+        {
+          "record": {
+            "data": {
+              "tisId": "%s",
+              "personId": "%s",
+              "startDate": "%s",
+              "curricula" : [
+                {
+                  "curriculumSpecialty": "Foundation",
+                  "curriculumSubType": "AFT"
+                }
+              ]
+            },
+            "operation": "%s"
+          }
+        }""".formatted(PROGRAMME_MEMBERSHIP_ID, traineeId, START_DATE, LOAD);
+
+    JsonNode eventJson = JsonMapper.builder()
+        .build()
+        .readTree(eventString);
+
+    sqsTemplate.send(PROGRAMME_MEMBERSHIP_SYNCED_QUEUE, eventJson);
+
+    Criteria criteria = Criteria.where("traineeId").is(traineeId);
+    Query query = Query.query(criteria);
+    List<Action> actions = new ArrayList<>();
+
+    await()
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(10))
+        .ignoreExceptions()
+        .untilAsserted(() -> {
+          List<Action> found = mongoTemplate.find(query, Action.class);
+          assertThat("Unexpected action count.", found.size(),
+              is(ActionType.getFoundationProgrammeActionTypes().size()));
+          actions.addAll(found);
+        });
+
+    for (ActionType actionType : ActionType.getFoundationProgrammeActionTypes()) {
+      Optional<Action> actionOptional = actions.stream()
+          .filter(a -> a.type().equals(actionType))
+          .findFirst();
+      assertThat("Missing action for type: " + actionType, actionOptional.isPresent(), is(true));
+      Action action = actionOptional.get();
+      assertThat("Unexpected action id.", action.id(), notNullValue());
+      assertThat("Unexpected action type.", action.type(), is(actionType));
+      assertThat("Unexpected trainee id.", action.traineeId(), is(traineeId));
+      assertThat("Unexpected available from date.", action.availableFrom(), is(NOW));
+      assertThat("Unexpected due by date.", action.dueBy(), is(START_DATE));
+      assertThat("Unexpected completed date.", action.completed(), nullValue());
+
+      TisReferenceInfo tisReference = action.tisReferenceInfo();
+      assertThat("Unexpected TIS id.", tisReference.id(), is(PROGRAMME_MEMBERSHIP_ID));
+      assertThat("Unexpected TIS type.", tisReference.type(), is(PROGRAMME_MEMBERSHIP));
+    }
+  }
+
+  @Test
   void shouldInsertCompletedSignCojActionWhenProgrammeMembershipHasCoj()
       throws JsonProcessingException {
     String traineeId = UUID.randomUUID().toString();

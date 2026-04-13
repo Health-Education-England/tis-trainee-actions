@@ -55,6 +55,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.bson.types.ObjectId;
@@ -75,6 +76,7 @@ import uk.nhs.tis.trainee.actions.dto.ConditionsOfJoining;
 import uk.nhs.tis.trainee.actions.dto.FormUpdateEvent;
 import uk.nhs.tis.trainee.actions.dto.PlacementDto;
 import uk.nhs.tis.trainee.actions.dto.ProgrammeMembershipDto;
+import uk.nhs.tis.trainee.actions.dto.ProgrammeMembershipDto.CurriculumDto;
 import uk.nhs.tis.trainee.actions.dto.enumeration.FormLifecycleState;
 import uk.nhs.tis.trainee.actions.event.Operation;
 import uk.nhs.tis.trainee.actions.mapper.ActionMapperImpl;
@@ -112,10 +114,11 @@ class ActionServiceTest {
     service = new ActionService(repository, new ActionMapperImpl(), eventPublishingService);
   }
 
-  @Test
-  void shouldInsertAllActionsOnFirstSightOfPostEpochProgrammeMembership() {
-    ProgrammeMembershipDto dto
-        = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, ACTIONS_EPOCH, null);
+  @ParameterizedTest
+  @ValueSource(strings = {"Foundation", "Not Foundation"})
+  void shouldInsertAllActionsOnFirstSightOfPostEpochProgrammeMembership(String specialty) {
+    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, ACTIONS_EPOCH, null,
+        List.of(new CurriculumDto(specialty, null)));
 
     when(repository.findByTraineeIdAndTisReferenceInfo(any(), any(), any()))
         .thenReturn(new ArrayList<>());
@@ -123,7 +126,10 @@ class ActionServiceTest {
 
     List<ActionDto> actions = service.updateActions(Operation.LOAD, dto);
 
-    int expectedActionCount = ActionType.getProgrammeActionTypes().size();
+    Set<ActionType> actionTypes =
+        specialty.equals("Foundation") ? ActionType.getFoundationProgrammeActionTypes()
+            : ActionType.getProgrammeActionTypes();
+    int expectedActionCount = actionTypes.size();
     assertThat("Unexpected action count.", actions.size(), is(expectedActionCount));
 
     // should broadcast inserted action
@@ -132,7 +138,7 @@ class ActionServiceTest {
         .publishActionUpdateEvent(actionCaptor.capture());
     List<Action> actionsPublished = actionCaptor.getAllValues();
 
-    for (ActionType actionType : ActionType.getProgrammeActionTypes()) {
+    for (ActionType actionType : actionTypes) {
       Optional<ActionDto> actionOfType = actions.stream()
           .filter(a -> a.type().equals(actionType.toString()))
           .findFirst();
@@ -169,9 +175,11 @@ class ActionServiceTest {
     }
   }
 
-  @Test
-  void shouldNotInsertActionsOnFirstSightOfPreEpochProgrammeMembership() {
-    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, PRE_EPOCH, null);
+  @ParameterizedTest
+  @ValueSource(strings = {"Foundation", "Not Foundation"})
+  void shouldNotInsertActionsOnFirstSightOfPreEpochProgrammeMembership(String specialty) {
+    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, PRE_EPOCH, null,
+        List.of(new CurriculumDto(specialty, null)));
 
     List<ActionDto> actions = service.updateActions(Operation.LOAD, dto);
 
@@ -181,9 +189,11 @@ class ActionServiceTest {
     verifyNoInteractions(eventPublishingService);
   }
 
-  @Test
-  void shouldNotInsertActionsOnAlreadyActionedPostEpochProgrammeMembership() {
-    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, POST_EPOCH, null);
+  @ParameterizedTest
+  @ValueSource(strings = {"Foundation", "Not Foundation"})
+  void shouldNotInsertActionsOnAlreadyActionedPostEpochProgrammeMembership(String specialty) {
+    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, POST_EPOCH, null,
+        List.of(new CurriculumDto(specialty, null)));
 
     TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
     List<Action> existingActions = new ArrayList<>();
@@ -206,7 +216,8 @@ class ActionServiceTest {
   @Test
   void shouldInsertCompletedCojSignedActionOnProgrammeMembershipWithCoj() {
     ConditionsOfJoining coj = new ConditionsOfJoining(Instant.MIN, "version", Instant.MAX);
-    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, ACTIONS_EPOCH, coj);
+    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, ACTIONS_EPOCH, coj,
+        null);
     when(repository.findByTraineeIdAndTisReferenceInfo(any(), any(), any()))
         .thenReturn(new ArrayList<>());
 
@@ -233,7 +244,8 @@ class ActionServiceTest {
   @Test
   void shouldCompleteCojSignedActionOnProgrammeMembershipWithExistingCojAction() {
     ConditionsOfJoining coj = new ConditionsOfJoining(Instant.MIN, "version", Instant.MAX);
-    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, PRE_EPOCH, coj);
+    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, PRE_EPOCH, coj,
+        null);
 
     TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
     List<Action> existingActions = List.of(new Action(ObjectId.get(), SIGN_COJ, TRAINEE_ID,
@@ -806,7 +818,8 @@ class ActionServiceTest {
   @MethodSource("providePreAndPostEpochDates")
   void shouldDeleteAnyExistingNotCompleteActionsWhenProgrammeMembershipOperationIsDelete(
       LocalDate theDate) {
-    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, theDate, null);
+    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, theDate, null,
+        null);
 
     Action action1 = new Action(ObjectId.get(), REVIEW_DATA, TRAINEE_ID, null, null,
         POST_EPOCH, null);
