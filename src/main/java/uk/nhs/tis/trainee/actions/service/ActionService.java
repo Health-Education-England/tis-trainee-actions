@@ -167,6 +167,10 @@ public class ActionService {
     if (Objects.equals(operation, Operation.LOAD)
         && !(dto.startDate().isBefore(ACTIONS_EPOCH))) {
 
+      if (dto.isFoundationProgramme()) {
+        deleteUnneededFoundationActions(dto);
+      }
+
       Set<ActionType> actionTypes =
           dto.isFoundationProgramme() ? ActionType.getFoundationProgrammeActionTypes()
               : ActionType.getProgrammeActionTypes();
@@ -215,6 +219,26 @@ public class ActionService {
     List<Action> actionInserted = repository.insert(actions);
     actionInserted.forEach(eventPublishingService::publishActionUpdateEvent);
     return mapper.toDtos(actionInserted);
+  }
+
+  /**
+   * Delete incomplete programme membership actions that are not valid for foundation programmes.
+   *
+   * @param dto The programme membership being processed.
+   */
+  private void deleteUnneededFoundationActions(ProgrammeMembershipDto dto) {
+    Set<ActionType> foundationActionTypes = ActionType.getFoundationProgrammeActionTypes();
+    ActionType.getProgrammeActionTypes().stream()
+        .filter(actionType -> !foundationActionTypes.contains(actionType))
+        .forEach(actionType -> {
+          List<Action> deletedActions =
+              repository.deleteByTraineeIdAndTisReferenceInfoAndActionTypeAndNotComplete(
+                  dto.traineeId(), dto.id(), PROGRAMME_MEMBERSHIP.toString(),
+                  actionType.toString());
+          log.info("{} unneeded foundation action(s) deleted for {} {}", deletedActions.size(),
+              PROGRAMME_MEMBERSHIP, dto.id());
+          deletedActions.forEach(eventPublishingService::publishActionDeleteEvent);
+        });
   }
 
   /**

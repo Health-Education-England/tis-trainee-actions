@@ -42,6 +42,7 @@ import static uk.nhs.tis.trainee.actions.model.ActionType.REGISTER_TSS;
 import static uk.nhs.tis.trainee.actions.model.ActionType.REVIEW_DATA;
 import static uk.nhs.tis.trainee.actions.model.ActionType.SIGN_COJ;
 import static uk.nhs.tis.trainee.actions.model.ActionType.SIGN_FORM_R_PART_A;
+import static uk.nhs.tis.trainee.actions.model.ActionType.SIGN_FORM_R_PART_B;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PERSON;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
@@ -57,6 +58,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
@@ -189,11 +191,10 @@ class ActionServiceTest {
     verifyNoInteractions(eventPublishingService);
   }
 
-  @ParameterizedTest
-  @ValueSource(strings = {"Foundation", "Not Foundation"})
-  void shouldNotInsertActionsOnAlreadyActionedPostEpochProgrammeMembership(String specialty) {
+  @Test
+  void shouldNotInsertActionsOnAlreadyActionedPostEpochProgrammeMembership() {
     ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, POST_EPOCH, null,
-        List.of(new CurriculumDto(specialty, null)));
+        List.of(new CurriculumDto("Not Foundation", null)));
 
     TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
     List<Action> existingActions = new ArrayList<>();
@@ -210,6 +211,75 @@ class ActionServiceTest {
     assertThat("Unexpected action count.", actions.size(), is(0));
     verify(repository).findByTraineeIdAndTisReferenceInfo(any(), any(), any());
     verifyNoMoreInteractions(repository);
+    verifyNoMoreInteractions(eventPublishingService);
+  }
+
+  @Test
+  void shouldNotInsertActionsOnAlreadyActionedPostEpochFoundationProgrammeMembership() {
+    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, POST_EPOCH, null,
+        List.of(new CurriculumDto("Foundation", null)));
+
+    TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
+    List<Action> existingActions = new ArrayList<>();
+    for (ActionType actionType : ActionType.getFoundationProgrammeActionTypes()) {
+      Action existingAction = new Action(ObjectId.get(), actionType, TRAINEE_ID, tisReference,
+          PRE_EPOCH, POST_EPOCH, null);
+      existingActions.add(existingAction);
+    }
+    when(repository.findByTraineeIdAndTisReferenceInfo(any(), any(), any()))
+        .thenReturn(existingActions);
+    when(repository.deleteByTraineeIdAndTisReferenceInfoAndActionTypeAndNotComplete(
+        any(), any(), any(), any())).thenReturn(List.of());
+
+    List<ActionDto> actions = service.updateActions(Operation.LOAD, dto);
+
+    assertThat("Unexpected action count.", actions.size(), is(0));
+    Set<ActionType> nonFoundationTypes = ActionType.getProgrammeActionTypes().stream()
+        .filter(t -> !ActionType.getFoundationProgrammeActionTypes().contains(t))
+        .collect(Collectors.toSet());
+    for (ActionType actionType : nonFoundationTypes) {
+      verify(repository).deleteByTraineeIdAndTisReferenceInfoAndActionTypeAndNotComplete(
+          TRAINEE_ID, TIS_ID, PROGRAMME_MEMBERSHIP.toString(), actionType.toString());
+    }
+    verifyNoMoreInteractions(eventPublishingService);
+  }
+
+  @Test
+  void shouldDeleteUnneededIncompleteActionsForFoundationProgramme() {
+    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, POST_EPOCH, null,
+        List.of(new CurriculumDto("Foundation", null)));
+
+    TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
+    Action incompleteCoj = new Action(ObjectId.get(), SIGN_COJ, TRAINEE_ID, tisReference,
+        PRE_EPOCH, POST_EPOCH, null);
+    Action incompleteFormA = new Action(ObjectId.get(), SIGN_FORM_R_PART_A, TRAINEE_ID,
+        tisReference, PRE_EPOCH, POST_EPOCH, null);
+    Action existingReviewData = new Action(ObjectId.get(), REVIEW_DATA, TRAINEE_ID, tisReference,
+        PRE_EPOCH, POST_EPOCH, null);
+
+    when(repository.findByTraineeIdAndTisReferenceInfo(any(), any(), any()))
+        .thenReturn(List.of(existingReviewData));
+    when(repository.deleteByTraineeIdAndTisReferenceInfoAndActionTypeAndNotComplete(
+        TRAINEE_ID, TIS_ID, PROGRAMME_MEMBERSHIP.toString(), SIGN_COJ.toString()))
+        .thenReturn(List.of(incompleteCoj));
+    when(repository.deleteByTraineeIdAndTisReferenceInfoAndActionTypeAndNotComplete(
+        TRAINEE_ID, TIS_ID, PROGRAMME_MEMBERSHIP.toString(), SIGN_FORM_R_PART_A.toString()))
+        .thenReturn(List.of(incompleteFormA));
+    when(repository.deleteByTraineeIdAndTisReferenceInfoAndActionTypeAndNotComplete(
+        TRAINEE_ID, TIS_ID, PROGRAMME_MEMBERSHIP.toString(), SIGN_FORM_R_PART_B.toString()))
+        .thenReturn(List.of());
+
+    service.updateActions(Operation.LOAD, dto);
+
+    Set<ActionType> nonFoundationTypes = ActionType.getProgrammeActionTypes().stream()
+        .filter(t -> !ActionType.getFoundationProgrammeActionTypes().contains(t))
+        .collect(Collectors.toSet());
+    for (ActionType actionType : nonFoundationTypes) {
+      verify(repository).deleteByTraineeIdAndTisReferenceInfoAndActionTypeAndNotComplete(
+          TRAINEE_ID, TIS_ID, PROGRAMME_MEMBERSHIP.toString(), actionType.toString());
+    }
+    verify(eventPublishingService).publishActionDeleteEvent(incompleteCoj);
+    verify(eventPublishingService).publishActionDeleteEvent(incompleteFormA);
     verifyNoMoreInteractions(eventPublishingService);
   }
 

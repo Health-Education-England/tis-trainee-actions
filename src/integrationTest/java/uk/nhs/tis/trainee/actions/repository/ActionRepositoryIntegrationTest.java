@@ -26,6 +26,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static uk.nhs.tis.trainee.actions.model.ActionType.REVIEW_DATA;
+import static uk.nhs.tis.trainee.actions.model.ActionType.SIGN_COJ;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
 
@@ -159,5 +160,57 @@ class ActionRepositoryIntegrationTest {
     List<Action> deletedActions = repository.deleteByTraineeIdAndTisReferenceInfo(
         TRAINEE_ID_1, TIS_ID, PLACEMENT.toString());
     assertThat("Unexpected delete count.", deletedActions.size(), is(1));
+  }
+
+  @Test
+  void shouldNotDeleteCompleteActionOfTypeWhenDeletingByActionTypeAndNotComplete() {
+    TisReferenceInfo referenceInfo = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
+    Action action = new Action(null, SIGN_COJ, TRAINEE_ID_1, referenceInfo, PAST, FUTURE,
+        Instant.now());
+
+    repository.insert(action);
+
+    List<Action> deletedActions =
+        repository.deleteByTraineeIdAndTisReferenceInfoAndActionTypeAndNotComplete(
+            TRAINEE_ID_1, TIS_ID, PROGRAMME_MEMBERSHIP.toString(), SIGN_COJ.toString());
+
+    assertThat("Unexpected delete count.", deletedActions.size(), is(0));
+    assertThat("Unexpected remaining count.", repository.findAll().size(), is(1));
+  }
+
+  @Test
+  void shouldDeleteIncompleteActionOfTypeWhenDeletingByActionTypeAndNotComplete() {
+    TisReferenceInfo referenceInfo = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
+    Action action = new Action(null, SIGN_COJ, TRAINEE_ID_1, referenceInfo, PAST, FUTURE, null);
+
+    repository.insert(action);
+
+    List<Action> deletedActions =
+        repository.deleteByTraineeIdAndTisReferenceInfoAndActionTypeAndNotComplete(
+            TRAINEE_ID_1, TIS_ID, PROGRAMME_MEMBERSHIP.toString(), SIGN_COJ.toString());
+
+    assertThat("Unexpected delete count.", deletedActions.size(), is(1));
+    assertThat("Unexpected remaining count.", repository.findAll().size(), is(0));
+  }
+
+  @Test
+  void shouldNotDeleteIncompleteActionOfDifferentTypeWhenDeletingByActionTypeAndNotComplete() {
+    TisReferenceInfo referenceInfo = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
+    Action actionToDelete = new Action(null, SIGN_COJ, TRAINEE_ID_1, referenceInfo, PAST, FUTURE,
+        null);
+    Action actionToKeep = new Action(null, REVIEW_DATA, TRAINEE_ID_1, referenceInfo, PAST, FUTURE,
+        null);
+
+    repository.insert(actionToDelete);
+    repository.insert(actionToKeep);
+
+    List<Action> deletedActions =
+        repository.deleteByTraineeIdAndTisReferenceInfoAndActionTypeAndNotComplete(
+            TRAINEE_ID_1, TIS_ID, PROGRAMME_MEMBERSHIP.toString(), SIGN_COJ.toString());
+
+    assertThat("Unexpected delete count.", deletedActions.size(), is(1));
+    List<Action> remaining = repository.findAll();
+    assertThat("Unexpected remaining count.", remaining.size(), is(1));
+    assertThat("Unexpected remaining action type.", remaining.get(0).type(), is(REVIEW_DATA));
   }
 }
