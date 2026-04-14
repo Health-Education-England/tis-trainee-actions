@@ -53,7 +53,7 @@ class ProgrammeMembershipDtoTest {
   }
 
   @Test
-  void shouldBeFoundationWhenSpecialtyNullAndSubTypeNull() {
+  void shouldNotBeFoundationWhenSpecialtyNullAndSubTypeNull() {
     CurriculumDto curriculum = new CurriculumDto(null, null);
     ProgrammeMembershipDto dto = new ProgrammeMembershipDto(PM_ID, TRAINEE_ID, START_DATE,
         CONDITIONS_OF_JOINING, List.of(curriculum));
