@@ -46,6 +46,13 @@ public enum ActionType {
       SIGN_FORM_R_PART_B);
 
   /**
+   * The set of Programme action types.
+   */
+  @Getter
+  private static final Set<ActionType> foundationProgrammeActionTypes = EnumSet.of(
+      REVIEW_DATA);
+
+  /**
    * The set of Placement action types.
    */
   @Getter

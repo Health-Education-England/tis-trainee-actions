@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
@@ -165,7 +166,12 @@ public class ActionService {
 
     if (Objects.equals(operation, Operation.LOAD)
         && !(dto.startDate().isBefore(ACTIONS_EPOCH))) {
-      for (ActionType actionType : ActionType.getProgrammeActionTypes()) {
+
+      Set<ActionType> actionTypes =
+          dto.isFoundationProgramme() ? ActionType.getFoundationProgrammeActionTypes()
+              : ActionType.getProgrammeActionTypes();
+
+      for (ActionType actionType : actionTypes) {
         Action newAction = mapper.toAction(dto, actionType);
         if (existingActions.stream().noneMatch(a -> a.type().equals(actionType))) {
           // only add action if it does not already exist
@@ -364,7 +370,7 @@ public class ActionService {
    */
   public List<ActionDto> findIncompleteTraineeActions(String traineeId) {
     List<Action> actions = repository.findAllByTraineeIdAndCompletedIsNullOrderByDueByAsc(
-        traineeId).stream()
+            traineeId).stream()
         .filter(a -> a.availableFrom() == null || !a.availableFrom().isAfter(LocalDate.now()))
         .toList();
     return mapper.toDtos(actions);
@@ -506,8 +512,8 @@ public class ActionService {
   }
 
   /**
-   * Move all actions from one trainee to another. Assumes that fromTraineeId and toTraineeId
-   * are valid. The updated actions are broadcast as events.
+   * Move all actions from one trainee to another. Assumes that fromTraineeId and toTraineeId are
+   * valid. The updated actions are broadcast as events.
    *
    * @param fromTraineeId The trainee ID to move actions from.
    * @param toTraineeId   The trainee ID to move actions to.

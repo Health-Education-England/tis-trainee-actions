@@ -25,6 +25,7 @@ import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import java.time.LocalDate;
+import java.util.List;
 import uk.nhs.tis.trainee.actions.dto.helpers.ConditionsOfJoiningDeserializer;
 
 /**
@@ -37,11 +38,49 @@ import uk.nhs.tis.trainee.actions.dto.helpers.ConditionsOfJoiningDeserializer;
  * @param traineeId           The trainee ID associated with the membership.
  * @param startDate           The programme start date.
  * @param conditionsOfJoining The serialized conditions of joining for the programme membership.
+ * @param curricula           The list of curricula associated with the programme membership.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record ProgrammeMembershipDto(@JsonAlias({"tisId", "uuid"}) String id,
-                                     @JsonAlias("personId") String traineeId, LocalDate startDate,
-                                     @JsonDeserialize(using = ConditionsOfJoiningDeserializer.class)
-                                     ConditionsOfJoining conditionsOfJoining) {
+public record ProgrammeMembershipDto(
+    @JsonAlias({"tisId", "uuid"})
+    String id,
 
+    @JsonAlias("personId")
+    String traineeId, LocalDate startDate,
+
+    @JsonDeserialize(using = ConditionsOfJoiningDeserializer.class)
+    ConditionsOfJoining conditionsOfJoining,
+
+    List<CurriculumDto> curricula
+
+) {
+
+  /**
+   * A representation of a curriculum associated with a programme membership.
+   *
+   * @param curriculumSpecialty The curriculum specialty.
+   * @param curriculumSubType   The curriculum subtype.
+   */
+  public record CurriculumDto(String curriculumSpecialty, String curriculumSubType) {
+
+  }
+
+  /**
+   * Identify if a programme membership is a foundation programme, by checking if any of the
+   * curricula have a specialty or subtype indicating it's a foundation programme.
+   *
+   * @return true if the programme membership is a foundation programme, otherwise false.
+   */
+  public boolean isFoundationProgramme() {
+    if (curricula() == null) {
+      return false;
+    }
+    return curricula().stream()
+        .anyMatch(curriculum -> {
+          String specialty = curriculum.curriculumSpecialty();
+          String subtype = curriculum.curriculumSubType();
+          return (subtype != null && (subtype.equalsIgnoreCase("AFT"))
+              || (specialty != null && specialty.equalsIgnoreCase("FOUNDATION")));
+        });
+  }
 }
