@@ -61,7 +61,7 @@ import uk.nhs.tis.trainee.actions.model.ActionType;
 
 @SpringBootTest
 @Testcontainers
-public class FormListenerIntegrationTest {
+class FormListenerIntegrationTest {
 
   private static final String TRAINEE_ID = UUID.randomUUID().toString();
   private static final String PROGRAMME_MEMBERSHIP_ID = UUID.randomUUID().toString();

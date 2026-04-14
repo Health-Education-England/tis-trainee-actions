@@ -27,6 +27,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import java.time.LocalDate;
 import java.util.List;
 import uk.nhs.tis.trainee.actions.dto.helpers.ConditionsOfJoiningDeserializer;
+import uk.nhs.tis.trainee.actions.dto.helpers.CurriculaDeserializer;
 
 /**
  * A representation of a programme membership.
@@ -51,6 +52,7 @@ public record ProgrammeMembershipDto(
     @JsonDeserialize(using = ConditionsOfJoiningDeserializer.class)
     ConditionsOfJoining conditionsOfJoining,
 
+    @JsonDeserialize(using = CurriculaDeserializer.class)
     List<CurriculumDto> curricula
 
 ) {
