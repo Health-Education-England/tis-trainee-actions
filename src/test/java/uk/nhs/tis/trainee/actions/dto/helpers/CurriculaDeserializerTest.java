@@ -61,10 +61,12 @@ class CurriculaDeserializerTest {
     String validJson = """
         [
           {
+            "curriculumTisId": "123",
             "curriculumSubType": "subType1",
             "curriculumSpecialty": "specialty1"
           },
           {
+            "curriculumTisId": "321",
             "curriculumSubType": "subType2",
             "curriculumSpecialty": "specialty2"
           }

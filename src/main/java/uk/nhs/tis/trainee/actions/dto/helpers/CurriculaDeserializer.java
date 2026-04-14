@@ -25,9 +25,9 @@ package uk.nhs.tis.trainee.actions.dto.helpers;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.io.IOException;
 import java.util.List;
@@ -42,7 +42,7 @@ public class CurriculaDeserializer extends JsonDeserializer<List<CurriculumDto>>
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
       .registerModule(new JavaTimeModule())
-      .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+      .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
 
   /**
    * Deserialize a JSON string into a CurriculumDto List. Note that a serialized value of "null"
@@ -57,6 +57,7 @@ public class CurriculaDeserializer extends JsonDeserializer<List<CurriculumDto>>
   public List<CurriculumDto> deserialize(JsonParser p, DeserializationContext ctxt)
       throws IOException {
     String curriculaString = p.getValueAsString();
-    return OBJECT_MAPPER.readValue(curriculaString, new TypeReference<>() {});
+    return OBJECT_MAPPER.readValue(curriculaString, new TypeReference<>() {
+    });
   }
 }

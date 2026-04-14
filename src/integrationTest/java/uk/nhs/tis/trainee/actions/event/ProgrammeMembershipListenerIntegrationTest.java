@@ -186,7 +186,7 @@ class ProgrammeMembershipListenerIntegrationTest {
               "tisId": "%s",
               "personId": "%s",
               "startDate": "%s",
-              "curricula": "[{\\"curriculumSubType\\":\\"AFT\\",\\"curriculumSpecialty\\":\\"Foundation\\"}]"
+              "curricula": "[{\\"curriculumTisId\\":\\"123\\",\\"curriculumSubType\\":\\"AFT\\",\\"curriculumSpecialty\\":\\"Foundation\\"}]"
             },
             "operation": "%s"
           }
