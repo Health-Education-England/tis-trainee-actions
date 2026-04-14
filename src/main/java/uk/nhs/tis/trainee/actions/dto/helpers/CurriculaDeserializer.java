@@ -30,32 +30,33 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.io.IOException;
-import uk.nhs.tis.trainee.actions.dto.ConditionsOfJoining;
+import java.util.List;
+import uk.nhs.tis.trainee.actions.dto.ProgrammeMembershipDto.CurriculumDto;
 
 /**
- * A deserializer for ConditionsOfJoining.
+ * A deserializer for CurriculumDto.
  *
- * <p>This deserializes a JSON string into a ConditionsOfJoining object using Jackson.</p>
+ * <p>This deserializes a JSON string into a List of CurriculumDto object using Jackson.</p>
  */
-public class ConditionsOfJoiningDeserializer extends JsonDeserializer<ConditionsOfJoining> {
+public class CurriculaDeserializer extends JsonDeserializer<List<CurriculumDto>> {
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
       .registerModule(new JavaTimeModule())
       .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
   /**
-   * Deserialize a JSON string into a ConditionsOfJoining object. Note that a serialized value of
-   * "null" will be converted into a null object.
+   * Deserialize a JSON string into a CurriculumDto List. Note that a serialized value of "null"
+   * will be converted into a null object.
    *
    * @param p    The JsonParser to read the JSON string.
    * @param ctxt The DeserializationContext.
-   * @return The deserialized ConditionsOfJoining object.
+   * @return The deserialized CurriculumDto List.
    * @throws IOException If an error occurs during deserialization.
    */
   @Override
-  public ConditionsOfJoining deserialize(JsonParser p, DeserializationContext ctxt)
+  public List<CurriculumDto> deserialize(JsonParser p, DeserializationContext ctxt)
       throws IOException {
-    String cojString = p.getValueAsString();
-    return OBJECT_MAPPER.readValue(cojString, new TypeReference<>() {});
+    String curriculaString = p.getValueAsString();
+    return OBJECT_MAPPER.readValue(curriculaString, new TypeReference<>() {});
   }
 }
