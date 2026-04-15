@@ -208,6 +208,8 @@ class ActionServiceTest {
 
     assertThat("Unexpected action count.", actions.size(), is(0));
     verify(repository).findByTraineeIdAndTisReferenceInfo(any(), any(), any());
+    verify(repository, never()).deleteByTraineeIdAndTisReferenceInfoAndActionTypeAndNotComplete(
+        any(), any(), any(), any());
     verifyNoMoreInteractions(repository);
     verifyNoMoreInteractions(eventPublishingService);
   }

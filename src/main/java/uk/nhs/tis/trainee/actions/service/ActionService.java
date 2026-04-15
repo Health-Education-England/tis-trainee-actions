@@ -167,13 +167,11 @@ public class ActionService {
     if (Objects.equals(operation, Operation.LOAD)
         && !(dto.startDate().isBefore(ACTIONS_EPOCH))) {
 
-      if (dto.isFoundationProgramme()) {
-        deleteUnneededFoundationActions(dto, existingActions);
-      }
-
       Set<ActionType> actionTypes =
           dto.isFoundationProgramme() ? ActionType.getFoundationProgrammeActionTypes()
               : ActionType.getProgrammeActionTypes();
+
+      deleteUnneededActions(dto, existingActions, actionTypes);
 
       for (ActionType actionType : actionTypes) {
         Action newAction = mapper.toAction(dto, actionType);
@@ -268,22 +266,22 @@ public class ActionService {
   }
 
   /**
-   * Delete incomplete programme membership actions that are not valid for foundation programmes.
+   * Delete incomplete programme membership actions that are not valid.
    *
    * @param dto The programme membership being processed.
    * @param existingActions The existing actions for the programme membership.
+   * @param validActionTypes The valid action types for the programme membership.
    */
-  private void deleteUnneededFoundationActions(
-      ProgrammeMembershipDto dto, List<Action> existingActions) {
-    Set<ActionType> foundationActionTypes = ActionType.getFoundationProgrammeActionTypes();
+  private void deleteUnneededActions(
+      ProgrammeMembershipDto dto, List<Action> existingActions, Set<ActionType> validActionTypes) {
     // To avoid expensive database calls to delete non-existent actions, we filter the existing
-    // actions to find any incomplete actions that are not valid for foundation programmes,
+    // actions to find any incomplete actions that are not valid,
     // and only then delete those actions from the database using their type.
     List<ActionType> unneededActionTypes =
         existingActions.stream()
             .filter(action -> action.completed() == null)
             .map(Action::type)
-            .filter(actionType -> !foundationActionTypes.contains(actionType))
+            .filter(actionType -> !validActionTypes.contains(actionType))
             .distinct()
             .toList();
     unneededActionTypes.forEach(
@@ -295,7 +293,7 @@ public class ActionService {
                   PROGRAMME_MEMBERSHIP.toString(),
                   actionType.toString());
           log.info(
-              "{} unneeded foundation action(s) of type {} deleted for {} {}",
+              "{} unneeded action(s) of type {} deleted for {} {}",
               deletedActions.size(),
               actionType,
               PROGRAMME_MEMBERSHIP,
