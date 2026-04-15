@@ -171,6 +171,8 @@ public class ActionService {
           dto.isFoundationProgramme() ? ActionType.getFoundationProgrammeActionTypes()
               : ActionType.getProgrammeActionTypes();
 
+      deleteUnneededActions(dto, existingActions, actionTypes);
+
       for (ActionType actionType : actionTypes) {
         Action newAction = mapper.toAction(dto, actionType);
         if (existingActions.stream().noneMatch(a -> a.type().equals(actionType))) {
@@ -190,7 +192,9 @@ public class ActionService {
 
     // Handle Conditions of Joining (CoJ) action. We ignore ACTIONS_EPOCH and start date here to
     // avoid dangling CoJ actions where a programme start date has been updated to before the epoch.
-    if (Objects.equals(operation, Operation.LOAD) && dto.conditionsOfJoining() != null) {
+    // CoJ is not applicable to foundation programmes, so skip this block for them.
+    if (Objects.equals(operation, Operation.LOAD) && dto.conditionsOfJoining() != null
+        && !dto.isFoundationProgramme()) {
       log.info("Completing any CoJ actions for Programme Membership {}.", dto.id());
       // If a CoJ action has just been created, replace it with a new completed action. This should
       // only be possible if bulk-loading programme memberships that already have signed CoJs.
@@ -259,6 +263,43 @@ public class ActionService {
     List<Action> actionInserted = repository.insert(actions);
     actionInserted.forEach(eventPublishingService::publishActionUpdateEvent);
     return mapper.toDtos(actionInserted);
+  }
+
+  /**
+   * Delete incomplete programme membership actions that are not valid.
+   *
+   * @param dto The programme membership being processed.
+   * @param existingActions The existing actions for the programme membership.
+   * @param validActionTypes The valid action types for the programme membership.
+   */
+  private void deleteUnneededActions(
+      ProgrammeMembershipDto dto, List<Action> existingActions, Set<ActionType> validActionTypes) {
+    // To avoid expensive database calls to delete non-existent actions, we filter the existing
+    // actions to find any incomplete actions that are not valid,
+    // and only then delete those actions from the database using their type.
+    List<ActionType> unneededActionTypes =
+        existingActions.stream()
+            .filter(action -> action.completed() == null)
+            .map(Action::type)
+            .filter(actionType -> !validActionTypes.contains(actionType))
+            .distinct()
+            .toList();
+    unneededActionTypes.forEach(
+        actionType -> {
+          List<Action> deletedActions =
+              repository.deleteByTraineeIdAndTisReferenceInfoAndActionTypeAndNotComplete(
+                  dto.traineeId(),
+                  dto.id(),
+                  PROGRAMME_MEMBERSHIP.toString(),
+                  actionType.toString());
+          log.info(
+              "{} unneeded action(s) of type {} deleted for {} {}",
+              deletedActions.size(),
+              actionType,
+              PROGRAMME_MEMBERSHIP,
+              dto.id());
+          deletedActions.forEach(eventPublishingService::publishActionDeleteEvent);
+        });
   }
 
   /**
