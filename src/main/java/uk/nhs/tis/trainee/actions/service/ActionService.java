@@ -194,7 +194,9 @@ public class ActionService {
 
     // Handle Conditions of Joining (CoJ) action. We ignore ACTIONS_EPOCH and start date here to
     // avoid dangling CoJ actions where a programme start date has been updated to before the epoch.
-    if (Objects.equals(operation, Operation.LOAD) && dto.conditionsOfJoining() != null) {
+    // CoJ is not applicable to foundation programmes, so skip this block for them.
+    if (Objects.equals(operation, Operation.LOAD) && dto.conditionsOfJoining() != null
+        && !dto.isFoundationProgramme()) {
       log.info("Completing any CoJ actions for Programme Membership {}.", dto.id());
       // If a CoJ action has just been created, replace it with a new completed action. This should
       // only be possible if bulk-loading programme memberships that already have signed CoJs.
@@ -293,8 +295,9 @@ public class ActionService {
                   PROGRAMME_MEMBERSHIP.toString(),
                   actionType.toString());
           log.info(
-              "{} unneeded foundation action(s) deleted for {} {}",
+              "{} unneeded foundation action(s) of type {} deleted for {} {}",
               deletedActions.size(),
+              actionType,
               PROGRAMME_MEMBERSHIP,
               dto.id());
           deletedActions.forEach(eventPublishingService::publishActionDeleteEvent);

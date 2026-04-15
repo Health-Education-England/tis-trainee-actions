@@ -372,6 +372,31 @@ class ActionServiceTest {
   }
 
   @Test
+  void shouldNotCompleteCojActionOnFoundationProgrammeMembershipWithCoj() {
+    ConditionsOfJoining coj = new ConditionsOfJoining(Instant.MIN, "version", Instant.MAX);
+    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, POST_EPOCH, coj,
+        List.of(new CurriculumDto("Foundation", null)));
+
+    TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
+    Action existingCoj = new Action(ObjectId.get(), SIGN_COJ, TRAINEE_ID, tisReference,
+        PRE_EPOCH, POST_EPOCH, null);
+    Action existingReviewData = new Action(ObjectId.get(), REVIEW_DATA, TRAINEE_ID, tisReference,
+        PRE_EPOCH, POST_EPOCH, null);
+
+    when(repository.findByTraineeIdAndTisReferenceInfo(any(), any(), any()))
+        .thenReturn(List.of(existingCoj, existingReviewData));
+    when(repository.deleteByTraineeIdAndTisReferenceInfoAndActionTypeAndNotComplete(
+        TRAINEE_ID, TIS_ID, PROGRAMME_MEMBERSHIP.toString(), SIGN_COJ.toString()))
+        .thenReturn(List.of(existingCoj));
+
+    service.updateActions(Operation.LOAD, dto);
+
+    verify(repository, never()).save(any());
+    verify(eventPublishingService).publishActionDeleteEvent(existingCoj);
+    verifyNoMoreInteractions(eventPublishingService);
+  }
+
+  @Test
   void shouldNotUpdateActionWhenNoCojDataProvided() {
     CojReceivedEvent event = new CojReceivedEvent(TIS_ID, TRAINEE_ID, null);
 
