@@ -228,19 +228,14 @@ class ActionServiceTest {
     }
     when(repository.findByTraineeIdAndTisReferenceInfo(any(), any(), any()))
         .thenReturn(existingActions);
-    when(repository.deleteByTraineeIdAndTisReferenceInfoAndActionTypeAndNotComplete(
-        any(), any(), any(), any())).thenReturn(List.of());
 
     List<ActionDto> actions = service.updateActions(Operation.LOAD, dto);
 
     assertThat("Unexpected action count.", actions.size(), is(0));
-    Set<ActionType> nonFoundationTypes = ActionType.getProgrammeActionTypes().stream()
-        .filter(t -> !ActionType.getFoundationProgrammeActionTypes().contains(t))
-        .collect(Collectors.toSet());
-    for (ActionType actionType : nonFoundationTypes) {
-      verify(repository).deleteByTraineeIdAndTisReferenceInfoAndActionTypeAndNotComplete(
-          TRAINEE_ID, TIS_ID, PROGRAMME_MEMBERSHIP.toString(), actionType.toString());
-    }
+    verify(repository).findByTraineeIdAndTisReferenceInfo(any(), any(), any());
+    verify(repository, never()).deleteByTraineeIdAndTisReferenceInfoAndActionTypeAndNotComplete(
+        any(), any(), any(), any());
+    verifyNoMoreInteractions(repository);
     verifyNoMoreInteractions(eventPublishingService);
   }
 
@@ -258,26 +253,22 @@ class ActionServiceTest {
         PRE_EPOCH, POST_EPOCH, null);
 
     when(repository.findByTraineeIdAndTisReferenceInfo(any(), any(), any()))
-        .thenReturn(List.of(existingReviewData));
+        .thenReturn(List.of(incompleteCoj, incompleteFormA, existingReviewData));
     when(repository.deleteByTraineeIdAndTisReferenceInfoAndActionTypeAndNotComplete(
         TRAINEE_ID, TIS_ID, PROGRAMME_MEMBERSHIP.toString(), SIGN_COJ.toString()))
         .thenReturn(List.of(incompleteCoj));
     when(repository.deleteByTraineeIdAndTisReferenceInfoAndActionTypeAndNotComplete(
         TRAINEE_ID, TIS_ID, PROGRAMME_MEMBERSHIP.toString(), SIGN_FORM_R_PART_A.toString()))
         .thenReturn(List.of(incompleteFormA));
-    when(repository.deleteByTraineeIdAndTisReferenceInfoAndActionTypeAndNotComplete(
-        TRAINEE_ID, TIS_ID, PROGRAMME_MEMBERSHIP.toString(), SIGN_FORM_R_PART_B.toString()))
-        .thenReturn(List.of());
 
     service.updateActions(Operation.LOAD, dto);
 
-    Set<ActionType> nonFoundationTypes = ActionType.getProgrammeActionTypes().stream()
-        .filter(t -> !ActionType.getFoundationProgrammeActionTypes().contains(t))
-        .collect(Collectors.toSet());
-    for (ActionType actionType : nonFoundationTypes) {
-      verify(repository).deleteByTraineeIdAndTisReferenceInfoAndActionTypeAndNotComplete(
-          TRAINEE_ID, TIS_ID, PROGRAMME_MEMBERSHIP.toString(), actionType.toString());
-    }
+    verify(repository).deleteByTraineeIdAndTisReferenceInfoAndActionTypeAndNotComplete(
+        TRAINEE_ID, TIS_ID, PROGRAMME_MEMBERSHIP.toString(), SIGN_COJ.toString());
+    verify(repository).deleteByTraineeIdAndTisReferenceInfoAndActionTypeAndNotComplete(
+        TRAINEE_ID, TIS_ID, PROGRAMME_MEMBERSHIP.toString(), SIGN_FORM_R_PART_A.toString());
+    verify(repository, never()).deleteByTraineeIdAndTisReferenceInfoAndActionTypeAndNotComplete(
+        TRAINEE_ID, TIS_ID, PROGRAMME_MEMBERSHIP.toString(), SIGN_FORM_R_PART_B.toString());
     verify(eventPublishingService).publishActionDeleteEvent(incompleteCoj);
     verify(eventPublishingService).publishActionDeleteEvent(incompleteFormA);
     verifyNoMoreInteractions(eventPublishingService);

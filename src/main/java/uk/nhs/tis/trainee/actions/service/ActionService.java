@@ -168,7 +168,7 @@ public class ActionService {
         && !(dto.startDate().isBefore(ACTIONS_EPOCH))) {
 
       if (dto.isFoundationProgramme()) {
-        deleteUnneededFoundationActions(dto);
+        deleteUnneededFoundationActions(dto, existingActions);
       }
 
       Set<ActionType> actionTypes =
@@ -224,13 +224,22 @@ public class ActionService {
   /**
    * Delete incomplete programme membership actions that are not valid for foundation programmes.
    *
-   * @param dto The programme membership being processed.
+   * @param dto             The programme membership being processed.
+   * @param existingActions The existing actions for the programme membership.
    */
-  private void deleteUnneededFoundationActions(ProgrammeMembershipDto dto) {
+  private void deleteUnneededFoundationActions(ProgrammeMembershipDto dto,
+      List<Action> existingActions) {
     Set<ActionType> foundationActionTypes = ActionType.getFoundationProgrammeActionTypes();
-    ActionType.getProgrammeActionTypes().stream()
+    // To avoid expensive database calls to delete non-existent actions, we filter the existing
+    // actions to find any incomplete actions that are not valid for foundation programmes,
+    // and only then delete those actions from the database using their type.
+    List<ActionType> unneededActionTypes = existingActions.stream()
+        .filter(action -> action.completed() == null)
+        .map(Action::type)
         .filter(actionType -> !foundationActionTypes.contains(actionType))
-        .forEach(actionType -> {
+        .distinct()
+        .toList();
+    unneededActionTypes.forEach(actionType -> {
           List<Action> deletedActions =
               repository.deleteByTraineeIdAndTisReferenceInfoAndActionTypeAndNotComplete(
                   dto.traineeId(), dto.id(), PROGRAMME_MEMBERSHIP.toString(),
