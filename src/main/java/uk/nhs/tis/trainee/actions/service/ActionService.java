@@ -268,30 +268,37 @@ public class ActionService {
   /**
    * Delete incomplete programme membership actions that are not valid for foundation programmes.
    *
-   * @param dto             The programme membership being processed.
+   * @param dto The programme membership being processed.
    * @param existingActions The existing actions for the programme membership.
    */
-  private void deleteUnneededFoundationActions(ProgrammeMembershipDto dto,
-      List<Action> existingActions) {
+  private void deleteUnneededFoundationActions(
+      ProgrammeMembershipDto dto, List<Action> existingActions) {
     Set<ActionType> foundationActionTypes = ActionType.getFoundationProgrammeActionTypes();
     // To avoid expensive database calls to delete non-existent actions, we filter the existing
     // actions to find any incomplete actions that are not valid for foundation programmes,
     // and only then delete those actions from the database using their type.
-    List<ActionType> unneededActionTypes = existingActions.stream()
-        .filter(action -> action.completed() == null)
-        .map(Action::type)
-        .filter(actionType -> !foundationActionTypes.contains(actionType))
-        .distinct()
-        .toList();
-    unneededActionTypes.forEach(actionType -> {
-      List<Action> deletedActions =
-          repository.deleteByTraineeIdAndTisReferenceInfoAndActionTypeAndNotComplete(
-              dto.traineeId(), dto.id(), PROGRAMME_MEMBERSHIP.toString(),
-              actionType.toString());
-      log.info("{} unneeded foundation action(s) deleted for {} {}", deletedActions.size(),
-          PROGRAMME_MEMBERSHIP, dto.id());
-      deletedActions.forEach(eventPublishingService::publishActionDeleteEvent);
-    });
+    List<ActionType> unneededActionTypes =
+        existingActions.stream()
+            .filter(action -> action.completed() == null)
+            .map(Action::type)
+            .filter(actionType -> !foundationActionTypes.contains(actionType))
+            .distinct()
+            .toList();
+    unneededActionTypes.forEach(
+        actionType -> {
+          List<Action> deletedActions =
+              repository.deleteByTraineeIdAndTisReferenceInfoAndActionTypeAndNotComplete(
+                  dto.traineeId(),
+                  dto.id(),
+                  PROGRAMME_MEMBERSHIP.toString(),
+                  actionType.toString());
+          log.info(
+              "{} unneeded foundation action(s) deleted for {} {}",
+              deletedActions.size(),
+              PROGRAMME_MEMBERSHIP,
+              dto.id());
+          deletedActions.forEach(eventPublishingService::publishActionDeleteEvent);
+        });
   }
 
   /**

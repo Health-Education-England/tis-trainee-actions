@@ -42,7 +42,6 @@ import static uk.nhs.tis.trainee.actions.model.ActionType.REGISTER_TSS;
 import static uk.nhs.tis.trainee.actions.model.ActionType.REVIEW_DATA;
 import static uk.nhs.tis.trainee.actions.model.ActionType.SIGN_COJ;
 import static uk.nhs.tis.trainee.actions.model.ActionType.SIGN_FORM_R_PART_A;
-import static uk.nhs.tis.trainee.actions.model.ActionType.SIGN_FORM_R_PART_B;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PERSON;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PLACEMENT;
 import static uk.nhs.tis.trainee.actions.model.TisReferenceType.PROGRAMME_MEMBERSHIP;
@@ -58,7 +57,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
@@ -267,11 +265,49 @@ class ActionServiceTest {
         TRAINEE_ID, TIS_ID, PROGRAMME_MEMBERSHIP.toString(), SIGN_COJ.toString());
     verify(repository).deleteByTraineeIdAndTisReferenceInfoAndActionTypeAndNotComplete(
         TRAINEE_ID, TIS_ID, PROGRAMME_MEMBERSHIP.toString(), SIGN_FORM_R_PART_A.toString());
-    verify(repository, never()).deleteByTraineeIdAndTisReferenceInfoAndActionTypeAndNotComplete(
-        TRAINEE_ID, TIS_ID, PROGRAMME_MEMBERSHIP.toString(), SIGN_FORM_R_PART_B.toString());
     verify(eventPublishingService).publishActionDeleteEvent(incompleteCoj);
     verify(eventPublishingService).publishActionDeleteEvent(incompleteFormA);
     verifyNoMoreInteractions(eventPublishingService);
+  }
+
+  @Test
+  void shouldNotDeleteCompletedUnneededActionsForFoundationProgramme() {
+    TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
+    Action completedCoj = new Action(ObjectId.get(), SIGN_COJ, TRAINEE_ID, tisReference,
+        PRE_EPOCH, POST_EPOCH, Instant.now());
+    Action existingReviewData = new Action(ObjectId.get(), REVIEW_DATA, TRAINEE_ID, tisReference,
+        PRE_EPOCH, POST_EPOCH, null);
+
+    when(repository.findByTraineeIdAndTisReferenceInfo(any(), any(), any()))
+        .thenReturn(List.of(completedCoj, existingReviewData));
+
+    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, POST_EPOCH, null,
+        List.of(new CurriculumDto("Foundation", null)));
+
+    service.updateActions(Operation.LOAD, dto);
+
+    verify(repository, never()).deleteByTraineeIdAndTisReferenceInfoAndActionTypeAndNotComplete(
+        any(), any(), any(), any());
+    verifyNoInteractions(eventPublishingService);
+  }
+
+  @Test
+  void shouldNotDeleteNonExistentUnneededActionsForFoundationProgramme() {
+    TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
+    Action existingReviewData = new Action(ObjectId.get(), REVIEW_DATA, TRAINEE_ID, tisReference,
+        PRE_EPOCH, POST_EPOCH, null);
+
+    when(repository.findByTraineeIdAndTisReferenceInfo(any(), any(), any()))
+        .thenReturn(List.of(existingReviewData));
+
+    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, POST_EPOCH, null,
+        List.of(new CurriculumDto("Foundation", null)));
+
+    service.updateActions(Operation.LOAD, dto);
+
+    verify(repository, never()).deleteByTraineeIdAndTisReferenceInfoAndActionTypeAndNotComplete(
+        any(), any(), any(), any());
+    verifyNoInteractions(eventPublishingService);
   }
 
   @Test
