@@ -216,9 +216,6 @@ class ActionServiceTest {
 
   @Test
   void shouldNotInsertActionsOnAlreadyActionedPostEpochFoundationProgrammeMembership() {
-    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, POST_EPOCH, null,
-        List.of(new CurriculumDto("Foundation", null)));
-
     TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
     List<Action> existingActions = new ArrayList<>();
     for (ActionType actionType : ActionType.getFoundationProgrammeActionTypes()) {
@@ -228,6 +225,9 @@ class ActionServiceTest {
     }
     when(repository.findByTraineeIdAndTisReferenceInfo(any(), any(), any()))
         .thenReturn(existingActions);
+
+    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, POST_EPOCH, null,
+        List.of(new CurriculumDto("Foundation", null)));
 
     List<ActionDto> actions = service.updateActions(Operation.LOAD, dto);
 
@@ -241,9 +241,6 @@ class ActionServiceTest {
 
   @Test
   void shouldDeleteUnneededIncompleteActionsForFoundationProgramme() {
-    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, POST_EPOCH, null,
-        List.of(new CurriculumDto("Foundation", null)));
-
     TisReferenceInfo tisReference = new TisReferenceInfo(TIS_ID, PROGRAMME_MEMBERSHIP);
     Action incompleteCoj = new Action(ObjectId.get(), SIGN_COJ, TRAINEE_ID, tisReference,
         PRE_EPOCH, POST_EPOCH, null);
@@ -260,6 +257,9 @@ class ActionServiceTest {
     when(repository.deleteByTraineeIdAndTisReferenceInfoAndActionTypeAndNotComplete(
         TRAINEE_ID, TIS_ID, PROGRAMME_MEMBERSHIP.toString(), SIGN_FORM_R_PART_A.toString()))
         .thenReturn(List.of(incompleteFormA));
+
+    ProgrammeMembershipDto dto = new ProgrammeMembershipDto(TIS_ID, TRAINEE_ID, POST_EPOCH, null,
+        List.of(new CurriculumDto("Foundation", null)));
 
     service.updateActions(Operation.LOAD, dto);
 
