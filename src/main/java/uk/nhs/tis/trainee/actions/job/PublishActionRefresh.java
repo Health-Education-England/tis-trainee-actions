@@ -77,20 +77,21 @@ public class PublishActionRefresh {
     AtomicInteger total = new AtomicInteger();
     AtomicInteger published = new AtomicInteger();
 
-    Stream<Action> actions = streamActions(cutoffDate);
-    actions.forEach(action -> {
-      total.getAndIncrement();
+    try (Stream<Action> actions = streamActions(cutoffDate)) {
+      actions.forEach(action -> {
+        total.getAndIncrement();
 
-      String actionId = action.id() != null ? action.id().toString() : "unknown";
-      log.debug("Publishing refresh notification for Action {}.", actionId);
+        String actionId = action.id() != null ? action.id().toString() : "unknown";
+        log.debug("Publishing refresh notification for Action {}.", actionId);
 
-      try {
-        eventPublishingService.publishActionUpdateEvent(action, topic);
-        published.getAndIncrement();
-      } catch (Exception e) {
-        log.error("Unable to publish refresh notification for Action {}.", actionId);
-      }
-    });
+        try {
+          eventPublishingService.publishActionUpdateEvent(action, topic);
+          published.getAndIncrement();
+        } catch (Exception e) {
+          log.error("Unable to publish refresh notification for Action {}.", actionId, e);
+        }
+      });
+    }
 
     log.info("Finished Action downstream refresh, published count: {}/{}.", published, total);
     return published.get();
