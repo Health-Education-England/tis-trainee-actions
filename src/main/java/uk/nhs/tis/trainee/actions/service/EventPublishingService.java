@@ -63,7 +63,7 @@ public class EventPublishingService {
   }
 
   /**
-   * Publish an action record with ActionStatus ACTIVE to a specified topic.
+   * Publish an action record with ActionStatus CURRENT to a specified topic.
    *
    * @param action The Action to publish.
    * @param topic  The SNS topic ARN to publish to.
