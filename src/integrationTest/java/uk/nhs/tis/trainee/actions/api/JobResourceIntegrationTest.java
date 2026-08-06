@@ -189,16 +189,6 @@ class JobResourceIntegrationTest {
     return new ObjectId(Date.from(instant));
   }
 
-  /**
-   * Create an ObjectId from a LocalDate (at start of day UTC).
-   *
-   * @param date The local date.
-   * @return An ObjectId with the corresponding timestamp.
-   */
-  private ObjectId objectIdFromLocalDate(LocalDate date) {
-    Instant instant = date.atStartOfDay().toInstant(ZoneOffset.UTC);
-    return new ObjectId(Date.from(instant));
-  }
 
   /**
    * Insert an action with a specific ObjectId and no completion date.
