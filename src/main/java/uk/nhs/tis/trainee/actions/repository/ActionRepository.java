@@ -23,6 +23,7 @@ package uk.nhs.tis.trainee.actions.repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.repository.DeleteQuery;
 import org.springframework.data.mongodb.repository.MongoRepository;
@@ -35,6 +36,23 @@ import uk.nhs.tis.trainee.actions.model.Action;
  */
 @Repository
 public interface ActionRepository extends MongoRepository<Action, ObjectId> {
+
+  /**
+   * Stream all actions.
+   *
+   * @return A stream of all actions.
+   */
+  @Query("{}")
+  Stream<Action> streamAll();
+
+  /**
+   * Stream all actions with an ID greater than or equal to the given ObjectId.
+   *
+   * @param id The minimum ObjectId (inclusive).
+   * @return A stream of matching actions.
+   */
+  @Query("{'_id': {$gte: ?0}}")
+  Stream<Action> streamByIdGreaterThanEqual(ObjectId id);
 
   /**
    * Get all actions associated with a given trainee ID.

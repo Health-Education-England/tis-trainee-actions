@@ -58,6 +58,7 @@ class EventPublishingServiceTest {
   private static final LocalDate NOW = LocalDate.now();
   private static final LocalDate PAST = NOW.minusDays(1);
   private static final LocalDate FUTURE = NOW.plusDays(1);
+  private static final String OVERRIDE_TOPIC = "arn:sns:override-topic";
 
   private EventPublishingService service;
   private ActionMapper actionMapper;
@@ -143,6 +144,97 @@ class EventPublishingServiceTest {
     when(actionMapper.toCurrentActionBroadcastDto(action)).thenReturn(actionBroadcastDto);
 
     service.publishActionUpdateEvent(action);
+
+    ArgumentCaptor<SnsNotification<ActionBroadcastDto>> messageCaptor = ArgumentCaptor.forClass(
+        SnsNotification.class);
+    verify(snsTemplate).sendNotification(any(), messageCaptor.capture());
+
+    SnsNotification<ActionBroadcastDto> message = messageCaptor.getValue();
+    ActionBroadcastDto payload = message.getPayload();
+    assertThat("Unexpected action id.", payload.id(), is(ACTION_ID_STRING));
+    assertThat("Unexpected action type.", payload.type(), is(REVIEW_DATA.toString()));
+    assertThat("Unexpected trainee id.", payload.traineeId(), is(TRAINEE_ID));
+    assertThat("Unexpected reference id", payload.tisReferenceInfo().id(), is(TIS_ID));
+    assertThat("Unexpected reference type.", payload.tisReferenceInfo().type(),
+        is(PLACEMENT));
+    assertThat("Unexpected available from date.", payload.availableFrom(), is(PAST));
+    assertThat("Unexpected due by date.", payload.dueBy(), is(FUTURE));
+    assertThat("Unexpected completed date.", payload.completed(), is(COMPLETED));
+    assertThat("Unexpected action status", payload.status(), is(ActionStatus.CURRENT));
+    assertThat("Unexpected action status date.", payload.statusDatetime(),
+        instanceOf(Instant.class));
+  }
+
+  @Test
+  void shouldSendToSpecifiedTopicWhenPublishingActionUpdateEventWithTopic() {
+    Action.TisReferenceInfo tisReference = new Action.TisReferenceInfo(TIS_ID, PLACEMENT);
+    Action action = new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, tisReference, PAST, FUTURE,
+        COMPLETED);
+    ActionBroadcastDto actionBroadcastDto = new ActionBroadcastDto(ACTION_ID.toString(),
+        REVIEW_DATA.toString(), TRAINEE_ID, tisReference, PAST, FUTURE,
+        COMPLETED, ActionStatus.CURRENT, Instant.now());
+
+    when(actionMapper.toCurrentActionBroadcastDto(action)).thenReturn(actionBroadcastDto);
+
+    service.publishActionUpdateEvent(action, OVERRIDE_TOPIC);
+
+    verify(snsTemplate).sendNotification(eq(OVERRIDE_TOPIC), any(SnsNotification.class));
+  }
+
+  @Test
+  void shouldSetGroupIdWhenPublishingActionUpdateEventWithFifoTopic() {
+    Action.TisReferenceInfo tisReference = new Action.TisReferenceInfo(TIS_ID, PLACEMENT);
+    Action action = new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, tisReference, PAST, FUTURE,
+        COMPLETED);
+    ActionBroadcastDto actionBroadcastDto = new ActionBroadcastDto(ACTION_ID.toString(),
+        REVIEW_DATA.toString(), TRAINEE_ID, tisReference, PAST, FUTURE,
+        COMPLETED, ActionStatus.CURRENT, Instant.now());
+
+    when(actionMapper.toCurrentActionBroadcastDto(action)).thenReturn(actionBroadcastDto);
+
+    service.publishActionUpdateEvent(action, OVERRIDE_TOPIC + ".fifo");
+
+    ArgumentCaptor<SnsNotification<ActionBroadcastDto>> messageCaptor = ArgumentCaptor.forClass(
+        SnsNotification.class);
+    verify(snsTemplate).sendNotification(any(), messageCaptor.capture());
+
+    SnsNotification<ActionBroadcastDto> message = messageCaptor.getValue();
+    assertThat("Unexpected group ID.", message.getGroupId(), is(ACTION_ID_STRING));
+  }
+
+  @Test
+  void shouldNotSetGroupIdWhenPublishingActionUpdateEventWithNonFifoTopic() {
+    Action.TisReferenceInfo tisReference = new Action.TisReferenceInfo(TIS_ID, PLACEMENT);
+    Action action = new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, tisReference, PAST, FUTURE,
+        COMPLETED);
+    ActionBroadcastDto actionBroadcastDto = new ActionBroadcastDto(ACTION_ID.toString(),
+        REVIEW_DATA.toString(), TRAINEE_ID, tisReference, PAST, FUTURE,
+        COMPLETED, ActionStatus.CURRENT, Instant.now());
+
+    when(actionMapper.toCurrentActionBroadcastDto(action)).thenReturn(actionBroadcastDto);
+
+    service.publishActionUpdateEvent(action, OVERRIDE_TOPIC);
+
+    ArgumentCaptor<SnsNotification<ActionBroadcastDto>> messageCaptor = ArgumentCaptor.forClass(
+        SnsNotification.class);
+    verify(snsTemplate).sendNotification(any(), messageCaptor.capture());
+
+    SnsNotification<ActionBroadcastDto> message = messageCaptor.getValue();
+    assertThat("Unexpected group ID.", message.getGroupId(), nullValue());
+  }
+
+  @Test
+  void shouldIncludePayloadWhenPublishingActionUpdateEventWithTopic() {
+    Action.TisReferenceInfo tisReference = new Action.TisReferenceInfo(TIS_ID, PLACEMENT);
+    Action action = new Action(ACTION_ID, REVIEW_DATA, TRAINEE_ID, tisReference, PAST, FUTURE,
+        COMPLETED);
+    ActionBroadcastDto actionBroadcastDto = new ActionBroadcastDto(ACTION_ID.toString(),
+        REVIEW_DATA.toString(), TRAINEE_ID, tisReference, PAST, FUTURE,
+        COMPLETED, ActionStatus.CURRENT, Instant.now());
+
+    when(actionMapper.toCurrentActionBroadcastDto(action)).thenReturn(actionBroadcastDto);
+
+    service.publishActionUpdateEvent(action, OVERRIDE_TOPIC);
 
     ArgumentCaptor<SnsNotification<ActionBroadcastDto>> messageCaptor = ArgumentCaptor.forClass(
         SnsNotification.class);
