@@ -75,8 +75,8 @@ class PublishActionRefreshTest {
 
     assertThat("Unexpected publish count.", result, is(2));
     verify(repository).streamAll();
-    verify(eventPublishingService, times(2)).publishActionUpdateEvent(any(Action.class),
-        eq(REFRESH_TOPIC));
+    verify(eventPublishingService, times(2)).publishActionUpdateEvent(
+        any(Action.class), eq(REFRESH_TOPIC));
   }
 
   @Test
@@ -123,13 +123,13 @@ class PublishActionRefreshTest {
 
     when(repository.streamAll()).thenReturn(Stream.of(action1, action2));
     doThrow(new RuntimeException("SNS error"))
-        .when(eventPublishingService).publishActionUpdateEvent(eq(action1), eq(REFRESH_TOPIC));
+        .when(eventPublishingService).publishActionUpdateEvent(action1, REFRESH_TOPIC);
 
     Integer result = job.execute(Optional.empty());
 
     assertThat("Unexpected publish count.", result, is(1));
-    verify(eventPublishingService, times(2)).publishActionUpdateEvent(any(Action.class),
-        eq(REFRESH_TOPIC));
+    verify(eventPublishingService, times(2)).publishActionUpdateEvent(
+        any(Action.class), eq(REFRESH_TOPIC));
   }
 
   @Test
