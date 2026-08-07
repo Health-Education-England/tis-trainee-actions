@@ -9,6 +9,7 @@ application:
     profile-move: ${local.sqs-path}/tis-trainee-actions-local-profile-move
   sns:
     arn: arn:aws:sns:eu-west-2:${local.account-id}:tis-trainee-actions-event
+    refresh-arn: arn:aws:sns:eu-west-2:${local.account-id}:tis-trainee-actions-refresh-event
 
 local:
   account-id: "000000000000"

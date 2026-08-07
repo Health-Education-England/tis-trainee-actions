@@ -63,6 +63,17 @@ public class EventPublishingService {
   }
 
   /**
+   * Publish an action record with ActionStatus CURRENT to a specified topic.
+   *
+   * @param action The Action to publish.
+   * @param topic  The SNS topic ARN to publish to.
+   */
+  public void publishActionUpdateEvent(Action action, String topic) {
+    ActionBroadcastDto broadcastAction = actionMapper.toCurrentActionBroadcastDto(action);
+    publishActionBroadcastEvent(broadcastAction, topic);
+  }
+
+  /**
    * Publish a blank record with ActionStatus DELETED for a deleted action.
    *
    * @param action The deleted Action to publish.
@@ -73,22 +84,32 @@ public class EventPublishingService {
   }
 
   /**
-   * Publish an action event.
+   * Publish an action event to the default topic.
    *
    * @param action The broadcast DTO of the action to publish.
    */
   private void publishActionBroadcastEvent(ActionBroadcastDto action) {
+    publishActionBroadcastEvent(action, topicArn.toString());
+  }
+
+  /**
+   * Publish an action event to a specified topic.
+   *
+   * @param action The broadcast DTO of the action to publish.
+   * @param topic  The SNS topic ARN to publish to.
+   */
+  private void publishActionBroadcastEvent(ActionBroadcastDto action, String topic) {
     String actionId = action.id();
     log.info("Publishing {} event for {} action {}", action.status(), action.type(), actionId);
 
     SnsNotification<ActionBroadcastDto> message;
-    if (topicArn.toString().endsWith(".fifo")) {
+    if (topic.endsWith(".fifo")) {
       message = SnsNotification.builder(action).groupId(actionId).build();
     } else {
       message = SnsNotification.builder(action).build();
     }
-    snsTemplate.sendNotification(topicArn.toString(), message);
+    snsTemplate.sendNotification(topic, message);
     log.info("Published {} event for {} action {} to topic {}", action.status(), action.type(),
-        actionId, topicArn);
+        actionId, topic);
   }
 }

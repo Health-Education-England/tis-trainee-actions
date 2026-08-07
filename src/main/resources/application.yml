@@ -9,6 +9,7 @@ application:
     profile-move: ${PROFILE_MOVE_QUEUE}
   sns:
     arn: ${ACTION_EVENT_TOPIC}
+    refresh-arn: ${ACTION_REFRESH_TOPIC}
 
 com:
   amazonaws:
