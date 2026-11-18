@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "uk.nhs.tis.trainee"
-version = "0.16.0"
+version = "0.17.0"
 
 configurations {
   compileOnly {
@@ -35,7 +35,6 @@ dependencies {
   implementation("org.springframework.boot:spring-boot-starter-web")
 
   // AWS
-  implementation(libs.aws.xray.spring)
   implementation("io.awspring.cloud:spring-cloud-aws-starter-sns")
   implementation("io.awspring.cloud:spring-cloud-aws-starter-sqs")
 

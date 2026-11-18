@@ -21,7 +21,6 @@ gradlew bootRun
 |-----------------------------------|---------------------------------------------------------|-----------|
 | ACTION_EVENT_TOPIC                | The SNS topic to broadcast Action events.               |           |
 | AWS_ENDPOINT                      | The AWS endpoint to use, used for local dev. (Optional) |           |
-| AWS_XRAY_DAEMON_ADDRESS           | The AWS XRay daemon host. (Optional)                    |           |
 | ENVIRONMENT                       | The environment to log events against.                  | local     |
 | MONGO_DB                          | The name of the MongoDB database.                       | actions   |
 | MONGO_HOST                        | The MongoDB database server host.                       | localhost |
